@@ -515,7 +515,8 @@ func (m *MemHandler) HandleDelete(meta txn.TxnMeta, req txnengine.DeleteReq, res
 	}
 
 	tx := m.getTx(meta)
-	for i := 0; i < req.Vector.Length; i++ {
+	reqVecLen := req.Vector.Length()
+	for i := 0; i < reqVecLen; i++ {
 		primaryKey := AnyKey{
 			typeConv(vectorAt(req.Vector, i)),
 		}
@@ -826,7 +827,7 @@ func (m *MemHandler) HandleRead(meta txn.TxnMeta, req txnengine.ReadReq, resp *t
 			if ok {
 				value = []byte(str)
 			}
-			b.Vecs[i].Append(value, m.mheap)
+			b.Vecs[i].Append(value, false, m.mheap)
 		}
 		rows++
 
