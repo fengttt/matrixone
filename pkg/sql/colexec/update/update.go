@@ -67,9 +67,7 @@ func Call(_ int, proc *process.Process, arg any) (bool, error) {
 			for i := range tmpBat.Vecs {
 				if tmpBat.Vecs[i].IsScalarNull() {
 					// vector need to be filled to insert
-					if err := fillVector(tmpBat.Vecs[i], batLen, proc); err != nil {
-						return false, err
-					}
+					vector.PreAlloc(tmpBat.Vecs[i], 0, batLen, proc.Mp())
 				}
 			}
 
@@ -137,7 +135,7 @@ func FilterBatch(bat *batch.Batch, batLen int, proc *process.Process) (*batch.Ba
 
 	for _, vec := range bat.Vecs {
 		v := vector.New(vec.Typ)
-		vector.PreAlloc(v, batLen, proc.Mp())
+		vector.PreAlloc(v, 0, batLen, proc.Mp())
 		newBat.Vecs = append(newBat.Vecs, v)
 	}
 
@@ -166,11 +164,6 @@ func FilterBatch(bat *batch.Batch, batLen int, proc *process.Process) (*batch.Ba
 	}
 	newBat.Zs = make([]int64, batLen)
 	return newBat, cnt
-}
-
-func fillVector(v *vector.Vector, batLen int, proc *process.Process) error {
-	vector.PreAlloc(v, batLen, proc.Mp())
-	return nil
 }
 
 // XXX isn't this type switch super slow?

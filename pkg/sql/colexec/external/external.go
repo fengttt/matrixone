@@ -208,7 +208,7 @@ func makeBatch(param *ExternalParam, plh *ParseLineHandler) *batch.Batch {
 		vec := vector.New(typ)
 		vec.Or = true
 		// XXX memory accouting?
-		vector.PreAlloc(vec, batchSize, nil)
+		vector.PreAlloc(vec, batchSize, batchSize, nil)
 		batchData.Vecs[i] = vec
 	}
 	return batchData

@@ -284,7 +284,7 @@ func makeBatch(handler *ParseLineHandler, id int) *PoolElement {
 	//alloc space for vector
 	for i := 0; i < len(handler.attrName); i++ {
 		// XXX memory alloc, where is the proc.Mp?
-		vec := vector.PreAllocType(handler.cols[i].Attr.Type, batchSize, nil)
+		vec := vector.PreAllocType(handler.cols[i].Attr.Type, batchSize, batchSize, nil)
 		batchData.Vecs[i] = vec
 	}
 

@@ -332,23 +332,12 @@ func makeVector[T vecType](values []T, nsp []uint64, typ types.Type) *vector.Vec
 }
 
 func makeStringVector(values []string, nsp []uint64, typ types.Type) *vector.Vector {
-	vec := vector.PreAllocType(typ, len(values), nil)
 	if nsp == nil {
-		for i, s := range values {
-			vector.SetStringAt(vec, i, s, nil)
-		}
+		return vector.NewWithStrings(typ, values, nil, nil)
 	} else {
-		for _, n := range nsp {
-			nulls.Add(vec.Nsp, n)
-		}
-		for i, s := range values {
-			if nulls.Contains(vec.Nsp, uint64(i)) {
-				continue
-			}
-			vector.SetStringAt(vec, i, s, nil)
-		}
+		vnsp := nulls.Build(len(values), nsp...)
+		return vector.NewWithStrings(typ, values, vnsp, nil)
 	}
-	return vec
 }
 
 func makeScalar[T vecType](value T, length int, typ types.Type) *vector.Vector {

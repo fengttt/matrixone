@@ -124,7 +124,7 @@ func (proc *Process) AllocVector(typ types.Type, size int64) (*vector.Vector, er
 
 func (proc *Process) AllocVectorOfRows(typ types.Type, nele int64, nsp *nulls.Nulls) (*vector.Vector, error) {
 	vec := vector.New(typ)
-	vector.PreAlloc(vec, int(nele), proc.Mp())
+	vector.PreAlloc(vec, int(nele), int(nele), proc.Mp())
 	if nsp != nil {
 		nulls.Set(vec.Nsp, nsp)
 	}

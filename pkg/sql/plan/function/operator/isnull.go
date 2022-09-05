@@ -31,7 +31,8 @@ func IsNull(vectors []*vector.Vector, proc *process.Process) (*vector.Vector, er
 			return vector.NewConstFixed(retType, input.Length(), false), nil
 		}
 	} else {
-		vec := vector.PreAllocType(retType, input.Length(), proc.Mp())
+		vlen := input.Length()
+		vec := vector.PreAllocType(retType, vlen, vlen, proc.Mp())
 		vals := vector.MustTCols[bool](vec)
 		for i := range vals {
 			if nulls.Contains(input.Nsp, uint64(i)) {

@@ -584,7 +584,7 @@ func Test_rowToColumnAndSaveToStorage(t *testing.T) {
 		handler.simdCsvLineArray[0] = field[0]
 		for i := 0; i < curBatchSize; i++ {
 			handler.dataColumnId2TableColumnId[i] = i
-			handler.batchData.Vecs[i] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, nil)
+			handler.batchData.Vecs[i] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, curBatchSize, nil)
 		}
 		var force = false
 		convey.So(rowToColumnAndSaveToStorage(handler, force, row2colChoose), convey.ShouldBeNil)
@@ -603,7 +603,7 @@ func Test_rowToColumnAndSaveToStorage(t *testing.T) {
 				continue
 			}
 			// XXX Vecs[0]?   What are we testing?
-			handler.batchData.Vecs[0] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, nil)
+			handler.batchData.Vecs[0] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, curBatchSize, nil)
 			convey.So(rowToColumnAndSaveToStorage(handler, force, row2colChoose), convey.ShouldNotBeNil)
 		}
 
@@ -614,7 +614,7 @@ func Test_rowToColumnAndSaveToStorage(t *testing.T) {
 				continue
 			}
 			// XXX Vecs[0]?   What are we testing?
-			handler.batchData.Vecs[0] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, nil)
+			handler.batchData.Vecs[0] = vector.PreAllocType(Oid[i].ToType(), curBatchSize, curBatchSize, nil)
 			convey.So(rowToColumnAndSaveToStorage(handler, force, row2colChoose), convey.ShouldNotBeNil)
 		}
 	})

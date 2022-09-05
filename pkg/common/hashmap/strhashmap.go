@@ -94,37 +94,37 @@ func (m *StrHashMap) InsertValue(val any) (bool, error) {
 	}
 	switch v := val.(type) {
 	case uint8:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case uint16:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case uint32:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case uint64:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case int8:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case int16:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case int32:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case int64:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case float32:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case float64:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case []byte:
 		m.keys[0] = append(m.keys[0], v...)
 	case types.Date:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case types.Datetime:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case types.Timestamp:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case types.Decimal64:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	case types.Decimal128:
-		m.keys[0] = append(m.keys[0], types.EncodeFixed(v)...)
+		m.keys[0] = append(m.keys[0], types.EncodeFixed(&v)...)
 	}
 	if l := len(m.keys[0]); l < 16 {
 		m.keys[0] = append(m.keys[0], hashtable.StrKeyPadding[l:]...)

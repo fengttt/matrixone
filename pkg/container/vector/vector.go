@@ -692,11 +692,11 @@ func SetStringAt(v *Vector, idx int, bs string, m *mheap.Mheap) error {
 	return SetBytesAt(v, idx, []byte(bs), m)
 }
 
-// XXX: PreAlloc create a empty v, with enough fixed slots to how rows entry.
-func PreAlloc(v *Vector, rows int, m *mheap.Mheap) {
+// XXX: PreAlloc create a empty v, with enough fixed slots to cap entry.
+func PreAlloc(v *Vector, rows, cap int, m *mheap.Mheap) {
 	var data []byte
 	var err error
-	sz := int64(rows * v.GetType().TypeSize())
+	sz := int64(cap * v.GetType().TypeSize())
 	if m == nil {
 		data = make([]byte, sz)
 	} else {
@@ -708,13 +708,12 @@ func PreAlloc(v *Vector, rows int, m *mheap.Mheap) {
 		panic(err)
 	}
 	v.Data = data
-	// XXX We setup Col with rows.
 	v.setupColFromData(0, rows)
 }
 
-func PreAllocType(t types.Type, rows int, m *mheap.Mheap) *Vector {
+func PreAllocType(t types.Type, rows, cap int, m *mheap.Mheap) *Vector {
 	vec := New(t)
-	PreAlloc(vec, rows, m)
+	PreAlloc(vec, rows, cap, m)
 	return vec
 }
 

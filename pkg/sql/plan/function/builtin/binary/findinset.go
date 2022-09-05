@@ -39,7 +39,8 @@ func FindInSet(vectors []*vector.Vector, proc *process.Process) (*vector.Vector,
 		if left.ConstVectorIsNull() {
 			return proc.AllocScalarNullVector(resultType), nil
 		}
-		resultVector := vector.PreAllocType(resultType, len(rightValues), proc.Mp())
+		rlen := len(rightValues)
+		resultVector := vector.PreAllocType(resultType, rlen, rlen, proc.Mp())
 		resultValues := vector.MustTCols[uint64](resultVector)
 		nulls.Set(resultVector.Nsp, right.Nsp)
 		findinset.FindInSetWithLeftConst(leftValues[0], rightValues, resultValues)
@@ -48,13 +49,15 @@ func FindInSet(vectors []*vector.Vector, proc *process.Process) (*vector.Vector,
 		if right.ConstVectorIsNull() {
 			return proc.AllocScalarNullVector(resultType), nil
 		}
-		resultVector := vector.PreAllocType(resultType, len(leftValues), proc.Mp())
+		resLen := len(leftValues)
+		resultVector := vector.PreAllocType(resultType, resLen, resLen, proc.Mp())
 		resultValues := vector.MustTCols[uint64](resultVector)
 		nulls.Set(resultVector.Nsp, left.Nsp)
 		findinset.FindInSetWithRightConst(leftValues, rightValues[0], resultValues)
 		return resultVector, nil
 	}
-	resultVector := vector.PreAllocType(resultType, len(leftValues), proc.Mp())
+	resLen := len(leftValues)
+	resultVector := vector.PreAllocType(resultType, resLen, resLen, proc.Mp())
 	resultValues := vector.MustTCols[uint64](resultVector)
 	nulls.Or(left.Nsp, right.Nsp, resultVector.Nsp)
 	vector.SetCol(resultVector, findinset.FindInSet(leftValues, rightValues, resultValues))
