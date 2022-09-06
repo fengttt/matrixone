@@ -91,8 +91,13 @@ func DateStringToYear(vectors []*vector.Vector, proc *process.Process) (*vector.
 			return proc.AllocScalarNullVector(resultType), nil
 		}
 		resultValues := make([]int64, 1)
-		DateStringToYearPlan2(inputValues, nil, resultValues)
-		return vector.NewConstFixed(resultType, 1, resultValues[0]), nil
+		ns := nulls.NewWithSize(1)
+		DateStringToYearPlan2(inputValues, ns, resultValues)
+		if ns.Any() {
+			return vector.NewConstNull(types.T_any.ToType(), 1), nil
+		} else {
+			return vector.NewConstFixed(resultType, 1, resultValues[0]), nil
+		}
 	} else {
 		resultVector, err := proc.AllocVectorOfRows(resultType, int64(len(inputValues)), inputVector.Nsp)
 		if err != nil {
@@ -124,7 +129,9 @@ func dateStringToYear(xs []string, ns *nulls.Nulls, rs []uint16) []uint16 {
 		if e != nil {
 			// XXX this is a bug, should raise error.
 			// set null
-			nulls.Add(ns, uint64(i))
+			if ns != nil {
+				nulls.Add(ns, uint64(i))
+			}
 			rs[i] = 0
 			continue
 		}

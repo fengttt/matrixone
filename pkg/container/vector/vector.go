@@ -731,7 +731,8 @@ func SetLength(v *Vector, n int) {
 		v.SetScalarLength(n)
 		return
 	}
-	SetVectorLength(v, n)
+	v.length = n
+	// SetVectorLength(v, n)
 }
 
 func SetVectorLength(v *Vector, n int) {
