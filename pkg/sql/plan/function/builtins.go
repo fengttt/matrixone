@@ -807,7 +807,7 @@ var builtins = map[int]Functions{
 				Layout:    STANDARD_FUNCTION,
 				Args:      []types.T{types.T_uint64, types.T_int64},
 				ReturnTyp: types.T_uint64,
-				Fn:        multi.FloorUInt64Int64,
+				Fn:        multi.FloorUInt64,
 			},
 			{
 				Index:     2,
@@ -823,7 +823,7 @@ var builtins = map[int]Functions{
 				Layout:    STANDARD_FUNCTION,
 				Args:      []types.T{types.T_int64, types.T_int64},
 				ReturnTyp: types.T_int64,
-				Fn:        multi.FloorInt64Int64,
+				Fn:        multi.FloorInt64,
 			},
 			{
 				Index:     4,
@@ -839,7 +839,7 @@ var builtins = map[int]Functions{
 				Layout:    STANDARD_FUNCTION,
 				Args:      []types.T{types.T_float64, types.T_int64},
 				ReturnTyp: types.T_float64,
-				Fn:        multi.FloorFloat64Int64,
+				Fn:        multi.FloorFloat64,
 			},
 			{
 				Index:     6,

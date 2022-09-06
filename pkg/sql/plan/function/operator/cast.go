@@ -647,15 +647,14 @@ func CastTimestampAsDate(lv, rv *vector.Vector, proc *process.Process) (*vector.
 	rtl := 8
 	lvs := vector.MustTCols[types.Timestamp](lv)
 	if lv.IsScalar() {
-		vec := proc.AllocScalarVector(rv.Typ)
 		rs := make([]types.Datetime, 1)
 		if _, err := binary.TimestampToDatetime(proc.SessionInfo.TimeZone, lvs, rs); err != nil {
 			return nil, err
 		}
 		rs2 := make([]types.Date, 1)
 		rs2[0] = rs[0].ToDate()
+		vec := vector.NewConstFixed(rv.Typ, 1, rs2[0])
 		nulls.Set(vec.Nsp, lv.Nsp)
-		vector.SetCol(vec, rs2)
 		return vec, nil
 	}
 	vec, err := proc.AllocVector(rv.Typ, int64(rtl)*int64(len(lvs)))
@@ -671,12 +670,8 @@ func CastTimestampAsDate(lv, rv *vector.Vector, proc *process.Process) (*vector.
 	for i := 0; i < len(rs2); i++ {
 		rs2[i] = rs[i].ToDate()
 	}
-	vec2, err := proc.AllocVector(rv.Typ, 4*int64(len(lvs)))
-	if err != nil {
-		return nil, err
-	}
+	vec2 := vector.NewWithFixed(rv.Typ, rs2, nulls.NewWithSize(len(rs2)), proc.GetMheap())
 	nulls.Set(vec2.Nsp, lv.Nsp)
-	vector.SetCol(vec2, rs2)
 	return vec2, nil
 }
 

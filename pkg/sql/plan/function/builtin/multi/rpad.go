@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/matrixorigin/matrixone/pkg/container/nulls"
+	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/sql/plan/function/builtin/binary"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
@@ -33,6 +34,10 @@ func Rpad(origVecs []*vector.Vector, proc *process.Process) (*vector.Vector, err
 	// gets all args
 	strs := vector.GetStrVectorValues(origVecs[0])
 	sizes := origVecs[1].Col
+	if _, ok := sizes.([]types.Varlena); ok {
+		sizes = vector.MustStrCols(origVecs[1])
+	}
+
 	var padstrs interface{}
 	// resolve padstrs,
 	if origVecs[2].GetType().IsVarlen() {

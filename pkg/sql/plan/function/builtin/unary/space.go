@@ -30,7 +30,8 @@ func SpaceNumber[T types.BuiltinNumber](vectors []*vector.Vector, proc *process.
 			return proc.AllocConstNullVector(resultType, inputVector.Length()), nil
 		}
 		results := make([]string, 1)
-		if _, err := space.FillSpacesNumber(inputValues, results); err != nil {
+		_, err := space.FillSpacesNumber(inputValues, results)
+		if err != nil {
 			return nil, err
 		}
 		return vector.NewConstString(resultType, inputVector.Length(), results[0]), nil

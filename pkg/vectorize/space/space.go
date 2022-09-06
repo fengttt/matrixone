@@ -32,13 +32,16 @@ const (
 
 func FillSpacesNumber[T types.BuiltinNumber](originalVecCol []T, rs []string) ([]string, error) {
 	for i, length := range originalVecCol {
-		ilen := int(length)
-		if ilen > MaxAllowedValue {
-			return nil, moerr.NewError(moerr.INVALID_INPUT, "the space count exceeds maxallowedCount 8000")
-		} else if ilen < 0 {
+		var ilen int
+		if length < 0 {
 			ilen = 0
+		} else {
+			ilen = int(length)
+			if ilen > MaxAllowedValue || ilen < 0 {
+				return nil, moerr.NewError(moerr.INVALID_INPUT, "the space count exceeds maxallowedCount 8000")
+			}
 		}
-		rs[i] = strings.Repeat(" ", ilen)
+		rs[i] = strings.Repeat(" ", int(ilen))
 	}
 	return rs, nil
 }

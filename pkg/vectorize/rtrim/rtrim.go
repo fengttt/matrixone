@@ -20,7 +20,8 @@ import (
 
 func Rtrim(xs []string, rs []string) []string {
 	for i, str := range xs {
-		rs[i] = strings.TrimRight(str, " \u3000")
+		// rs[i] = strings.TrimRight(str, " \u3000")
+		rs[i] = strings.TrimRight(str, " ")
 	}
 	return rs
 }
