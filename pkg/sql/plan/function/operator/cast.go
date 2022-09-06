@@ -68,7 +68,7 @@ func formatCastError(vec *vector.Vector, typ types.Type, extraInfo string) error
 		if vec.ConstVectorIsNull() {
 			errStr = fmt.Sprintf("Can't cast 'NULL' as %v type.", typ)
 		} else {
-			valueStr := strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%v", vec.Col), "["), "]")
+			valueStr := strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%v", vec), "["), "]")
 			shortenValueStr := shortenValueString(valueStr)
 			errStr = fmt.Sprintf("Can't cast '%s' from %v type to %v type.", shortenValueStr, vec.Typ, typ)
 		}
