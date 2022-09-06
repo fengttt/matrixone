@@ -128,10 +128,8 @@ func dateStringToYear(xs []string, ns *nulls.Nulls, rs []uint16) []uint16 {
 		d, e := types.ParseDateCast(str)
 		if e != nil {
 			// XXX this is a bug, should raise error.
-			// set null
-			if ns != nil {
-				nulls.Add(ns, uint64(i))
-			}
+			// set null]
+			nulls.Add(ns, uint64(i))
 			rs[i] = 0
 			continue
 		}
