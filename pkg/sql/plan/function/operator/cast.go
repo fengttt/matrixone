@@ -2231,10 +2231,11 @@ func CastStringToBool(lv, rv *vector.Vector, proc *process.Process) (*vector.Vec
 			continue
 		}
 		val, err := strconv.ParseFloat(str, 64)
-		if err == nil {
-			return nil, err
+		if err == nil && val != 0 {
+			rs[i] = true
+		} else {
+			rs[i] = false
 		}
-		rs[i] = (val != 0)
 	}
 	return vec, nil
 }
