@@ -22,15 +22,15 @@ import (
 )
 
 func CeilUint64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("ceil", vecs, proc, ceil.CeilUint64)
+	return generalMathMulti("ceil", vecs, proc, ceil.CeilUint64)
 }
 
 func CeilInt64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("ceil", vecs, proc, ceil.CeilInt64)
+	return generalMathMulti("ceil", vecs, proc, ceil.CeilInt64)
 }
 
 func CeilFloat64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("ceil", vecs, proc, ceil.CeilFloat64)
+	return generalMathMulti("ceil", vecs, proc, ceil.CeilFloat64)
 }
 
 func CeilDecimal128(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
@@ -38,5 +38,5 @@ func CeilDecimal128(vecs []*vector.Vector, proc *process.Process) (*vector.Vecto
 	cb := func(vs []types.Decimal128, rs []types.Decimal128, digits int64) []types.Decimal128 {
 		return ceil.CeilDecimal128(scale, vs, rs, digits)
 	}
-	return generalMathMuti("ceil", vecs, proc, cb)
+	return generalMathMulti("ceil", vecs, proc, cb)
 }

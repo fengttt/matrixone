@@ -31,7 +31,7 @@ type mathMultiT interface {
 
 type mathMultiFun[T mathMultiT] func([]T, []T, int64) []T
 
-func generalMathMuti[T mathMultiT](funName string, vecs []*vector.Vector, proc *process.Process, cb mathMultiFun[T]) (*vector.Vector, error) {
+func generalMathMulti[T mathMultiT](funName string, vecs []*vector.Vector, proc *process.Process, cb mathMultiFun[T]) (*vector.Vector, error) {
 	typ := vecs[0].Typ.Oid.ToType()
 	digits := int64(0)
 	if len(vecs) > 1 {

@@ -23,17 +23,17 @@ import (
 
 // floor function's evaluation for arguments: [uint64]
 func FloorUInt64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("floor", vecs, proc, floor.FloorUint64)
+	return generalMathMulti("floor", vecs, proc, floor.FloorUint64)
 }
 
 // floor function's evaluation for arguments: [int64]
 func FloorInt64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("floor", vecs, proc, floor.FloorInt64)
+	return generalMathMulti("floor", vecs, proc, floor.FloorInt64)
 }
 
 // floor function's evaluation for arguments: [float64]
 func FloorFloat64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("floor", vecs, proc, floor.FloorFloat64)
+	return generalMathMulti("floor", vecs, proc, floor.FloorFloat64)
 }
 
 func FloorDecimal128(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
@@ -41,5 +41,5 @@ func FloorDecimal128(vecs []*vector.Vector, proc *process.Process) (*vector.Vect
 	cb := func(vs []types.Decimal128, rs []types.Decimal128, digits int64) []types.Decimal128 {
 		return floor.FloorDecimal128(scale, vs, rs, digits)
 	}
-	return generalMathMuti("floor", vecs, proc, cb)
+	return generalMathMulti("floor", vecs, proc, cb)
 }

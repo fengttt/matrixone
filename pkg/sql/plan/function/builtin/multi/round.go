@@ -21,13 +21,13 @@ import (
 )
 
 func RoundUint64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("round", vecs, proc, round.RoundUint64)
+	return generalMathMulti("round", vecs, proc, round.RoundUint64)
 }
 
 func RoundInt64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("round", vecs, proc, round.RoundInt64)
+	return generalMathMulti("round", vecs, proc, round.RoundInt64)
 }
 
 func RoundFloat64(vecs []*vector.Vector, proc *process.Process) (*vector.Vector, error) {
-	return generalMathMuti("round", vecs, proc, round.RoundFloat64)
+	return generalMathMulti("round", vecs, proc, round.RoundFloat64)
 }
