@@ -151,11 +151,7 @@ func DateStringToYearPlan2(xs []string, ns *nulls.Nulls, rs []int64) []int64 {
 	for i, str := range xs {
 		d, e := types.ParseDateCast(str)
 		if e != nil {
-			// XXX this is wrong.
-			// set null
-			nulls.Add(ns, uint64(i))
-			rs[i] = 0
-			continue
+			panic(e)
 		}
 		rs[i] = int64(d.Year())
 	}

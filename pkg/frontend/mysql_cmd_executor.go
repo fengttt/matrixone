@@ -2060,8 +2060,13 @@ func (mce *MysqlCmdExecutor) doComQuery(requestCtx context.Context, sql string) 
 func (mce *MysqlCmdExecutor) ExecRequest(requestCtx context.Context, req *Request) (resp *Response, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = moerr.NewPanicError(e)
-			resp = NewGeneralErrorResponse(COM_QUERY, err)
+			moe, ok := e.(*moerr.Error)
+			if !ok {
+				err = moerr.NewPanicError(e)
+				resp = NewGeneralErrorResponse(COM_QUERY, err)
+			} else {
+				resp = NewGeneralErrorResponse(COM_QUERY, moe)
+			}
 		}
 	}()
 
