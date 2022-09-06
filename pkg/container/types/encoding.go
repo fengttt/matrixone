@@ -84,11 +84,11 @@ func DecodeType(v []byte) Type {
 	return *(*Type)(unsafe.Pointer(&v[0]))
 }
 
-func EncodeFixed[T any](v T) []byte {
+func EncodeFixed[T FixedSizeT](v T) []byte {
 	sz := unsafe.Sizeof(v)
 	return unsafe.Slice((*byte)(unsafe.Pointer(&v)), sz)
 }
-func DecodeFixed[T any](v []byte) T {
+func DecodeFixed[T FixedSizeT](v []byte) T {
 	return *(*T)(unsafe.Pointer(&v[0]))
 }
 
@@ -514,10 +514,6 @@ func EncodeValue(val any, typ Type) []byte {
 		panic("unsupported type")
 	}
 }
-func WriteFixedValue[T any](w io.Writer, v T) (err error) {
-	_, err = w.Write(EncodeFixed(v))
-	return
-}
 
 func WriteValues(w io.Writer, vals ...any) (n int64, err error) {
 	var nr int
@@ -613,9 +609,4 @@ func WriteValues(w io.Writer, vals ...any) (n int64, err error) {
 		}
 	}
 	return
-}
-
-func CopyFixValueToBuf[T any](dest []byte, val T) {
-	vbuf := EncodeFixed(val)
-	copy(dest[:unsafe.Sizeof(val)], vbuf)
 }

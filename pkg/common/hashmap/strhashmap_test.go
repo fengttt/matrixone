@@ -60,7 +60,7 @@ func TestInsert(t *testing.T) {
 	require.Equal(t, int64(0), m.Size())
 }
 
-func TestInertValue(t *testing.T) {
+func TestInsertValue(t *testing.T) {
 	hm := host.New(1 << 30)
 	gm := guest.New(1<<30, hm)
 	m := mheap.New(gm)
