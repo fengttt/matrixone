@@ -17,6 +17,11 @@ package etl
 import (
 	"context"
 	"fmt"
+	"path"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/defines"
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
@@ -25,10 +30,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/util/trace"
 	"github.com/matrixorigin/matrixone/pkg/util/trace/impl/motrace"
 	"github.com/stretchr/testify/require"
-	"path"
-	"strings"
-	"testing"
-	"time"
 )
 
 var dummyStrColumn = table.Column{Name: "str", ColType: table.TVarchar, Precision: 32, Default: "", Comment: "str column"}
@@ -52,7 +53,7 @@ var dummyAllTypeTable = &table.Table{
 
 func TestTAEWriter_WriteElems(t *testing.T) {
 	t.Logf("local timezone: %v", time.Local.String())
-	mp, err := mpool.NewMPool("test", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("test", 0)
 	require.Nil(t, err)
 	ctx := context.TODO()
 	configs := []fileservice.Config{{
@@ -160,7 +161,7 @@ func genLines(cnt int) (lines []*table.Row) {
 
 func TestTAEWriter_WriteRow(t *testing.T) {
 	t.Logf("local timezone: %v", time.Local.String())
-	mp, err := mpool.NewMPool("test", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("test", 0)
 	require.Nil(t, err)
 	ctx := context.TODO()
 	configs := []fileservice.Config{{
@@ -302,7 +303,7 @@ func TestTAEWriter_WriteRow(t *testing.T) {
 func TestTaeReadFile(t *testing.T) {
 	filePath := "rawlog.tae"
 
-	mp, err := mpool.NewMPool("TestTaeReadFile", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("TestTaeReadFile", 0)
 	require.Nil(t, err)
 	ctx := context.TODO()
 	configs := []fileservice.Config{{
@@ -374,7 +375,7 @@ func TestTaeReadFile(t *testing.T) {
 
 func TestTaeReadFile_ReadAll(t *testing.T) {
 
-	mp, err := mpool.NewMPool("TestTaeReadFile", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("TestTaeReadFile", 0)
 	require.Nil(t, err)
 	ctx := context.TODO()
 	configs := []fileservice.Config{{

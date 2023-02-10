@@ -87,7 +87,7 @@ func TestEncodeAndDecodeWithChecksum(t *testing.T) {
 }
 
 func TestEncodeAndDecodeWithCompress(t *testing.T) {
-	p, err := mpool.NewMPool("test", 0, mpool.Small)
+	p, err := mpool.NewMPool("test", 0)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Hour*10)
@@ -108,7 +108,7 @@ func TestEncodeAndDecodeWithCompress(t *testing.T) {
 }
 
 func TestEncodeAndDecodeWithCompressAndHasPayload(t *testing.T) {
-	p, err := mpool.NewMPool("test", 0, mpool.Small)
+	p, err := mpool.NewMPool("test", 0)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Hour*10)

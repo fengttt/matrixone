@@ -44,7 +44,7 @@ func (s *service) initDistributedTAE(
 	}
 
 	// Should be no fixed or some size?
-	mp, err := mpool.NewMPool("distributed_tae", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("distributed_tae", 0)
 	if err != nil {
 		return err
 	}

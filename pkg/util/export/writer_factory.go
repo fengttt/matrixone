@@ -39,7 +39,7 @@ func GetWriterFactory(fs fileservice.FileService, nodeUUID, nodeType string, ext
 			return etl.NewCSVWriter(ctx, bytes.NewBuffer(nil), etl.NewFSWriter(ctx, fs, options...))
 		}
 	case table.TaeExtension:
-		mp, err := mpool.NewMPool("etl_fs_writer", 0, mpool.NoFixed)
+		mp, err := mpool.NewMPool("etl_fs_writer", 0)
 		if err != nil {
 			panic(err)
 		}

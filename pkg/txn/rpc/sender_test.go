@@ -76,7 +76,7 @@ func TestSendWithSingleRequest(t *testing.T) {
 }
 
 func TestSendEnableCompressWithSingleRequest(t *testing.T) {
-	mp, err := mpool.NewMPool("test", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("test", 0)
 	require.NoError(t, err)
 	s := newTestTxnServer(t, testDN1Addr, morpc.WithCodecEnableCompress(mp))
 	defer func() {

@@ -185,7 +185,7 @@ func pipelineMessageHandle(ctx context.Context, message morpc.Message, cs morpc.
 			return nil, nil
 		} else {
 			// TODO: handle seperate batch
-			mp, err := mpool.NewMPool("cnservice_handle_batch", 0, mpool.NoFixed)
+			mp, err := mpool.NewMPool("cnservice_handle_batch", 0)
 			if err != nil {
 				return nil, err
 			}
@@ -1276,7 +1276,7 @@ func convertToVmInstruction(opr *pipeline.Instruction, ctx *scopeContext) (vm.In
 // TODO: give addr to compile?
 func newCompile(ctx context.Context, message morpc.Message, pHelper *processHelper, mHelper *messageHandleHelper, cs morpc.ClientSession) *Compile {
 	// compile is almost surely wanting a small or mid pool.  Later.
-	mp, err := mpool.NewMPool("compile", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("compile", 0)
 	if err != nil {
 		panic(err)
 	}

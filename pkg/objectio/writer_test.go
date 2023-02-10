@@ -110,7 +110,7 @@ func TestNewObjectWriter(t *testing.T) {
 	for i, blk := range blocks {
 		extents[i] = NewExtent(blk.GetID(), blk.GetExtent().offset, blk.GetExtent().length, blk.GetExtent().originSize)
 	}
-	pool, err := mpool.NewMPool("objectio_test", 0, mpool.NoFixed)
+	pool, err := mpool.NewMPool("objectio_test", 0)
 	assert.NoError(t, err)
 	nb0 := pool.CurrNB()
 	bs, err := objectReader.ReadMeta(context.Background(), extents, pool)

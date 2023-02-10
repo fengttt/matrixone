@@ -139,7 +139,7 @@ func NewSender(
 		morpc.WithCodecEnableChecksum(),
 		morpc.WithCodecMaxBodySize(s.options.maxMessageSize))
 	if s.options.enableCompress {
-		mp, err := mpool.NewMPool("txn_rpc_sender", 0, mpool.NoFixed)
+		mp, err := mpool.NewMPool("txn_rpc_sender", 0)
 		if err != nil {
 			return nil, err
 		}

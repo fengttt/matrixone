@@ -539,7 +539,7 @@ func getRPCClient(
 		morpc.WithCodecEnableChecksum(),
 		morpc.WithCodecMaxBodySize(maxMessageSize))
 	if enableCompress {
-		mp, err := mpool.NewMPool("log_rpc_client", 0, mpool.NoFixed)
+		mp, err := mpool.NewMPool("log_rpc_client", 0)
 		if err != nil {
 			return nil, err
 		}

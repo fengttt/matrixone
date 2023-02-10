@@ -314,7 +314,7 @@ func NewSession(proto Protocol, mp *mpool.MPool, pu *config.ParameterUnit, gSysV
 		// XXX MPOOL
 		// We don't have a way to close a session, so the only sane way of creating
 		// a mpool is to use NoFixed
-		ses.mp, err = mpool.NewMPool("pipeline-"+ses.GetUUIDString(), pu.SV.GuestMmuLimitation, mpool.NoFixed)
+		ses.mp, err = mpool.NewMPool("pipeline-"+ses.GetUUIDString(), pu.SV.GuestMmuLimitation)
 		if err != nil {
 			panic(err)
 		}

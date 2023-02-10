@@ -580,7 +580,7 @@ func Test_rowToColumnAndSaveToStorage(t *testing.T) {
 			},
 			ThreadInfo: &ThreadInfo{},
 		}
-		mp, err := mpool.NewMPool("session", 0, mpool.NoFixed)
+		mp, err := mpool.NewMPool("session", 0)
 		if err != nil {
 			panic(err)
 		}

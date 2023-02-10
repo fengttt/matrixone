@@ -111,7 +111,7 @@ func (s *store) newMemTxnStorage(
 	hakeeper logservice.DNHAKeeperClient,
 ) (storage.TxnStorage, error) {
 	// should it be no fixed or a certain size?
-	mp, err := mpool.NewMPool("mem_txn_storge", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("mem_txn_storge", 0)
 	if err != nil {
 		return nil, err
 	}

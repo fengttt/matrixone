@@ -159,7 +159,7 @@ func NewMerge(ctx context.Context, opts ...MergeOption) (*Merge, error) {
 	if m.FS, err = fileservice.Get[fileservice.FileService](m.FS, m.FSName); err != nil {
 		return nil, err
 	}
-	if m.mp, err = mpool.NewMPool("etl_merge_task", 0, mpool.NoFixed); err != nil {
+	if m.mp, err = mpool.NewMPool("etl_merge_task", 0); err != nil {
 		return nil, err
 	}
 	m.valid(ctx)

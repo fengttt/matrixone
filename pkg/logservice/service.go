@@ -131,7 +131,7 @@ func NewService(
 		morpc.WithCodecEnableChecksum(),
 		morpc.WithCodecMaxBodySize(int(cfg.RPC.MaxMessageSize)))
 	if cfg.RPC.EnableCompress {
-		mp, err := mpool.NewMPool("log_rpc_server", 0, mpool.NoFixed)
+		mp, err := mpool.NewMPool("log_rpc_server", 0)
 		if err != nil {
 			return nil, err
 		}

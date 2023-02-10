@@ -5120,7 +5120,7 @@ func InitSysTenant(ctx context.Context, autoincrcaches defines.AutoIncrCaches) e
 	ctx = context.WithValue(ctx, defines.UserIDKey{}, uint32(rootID))
 	ctx = context.WithValue(ctx, defines.RoleIDKey{}, uint32(moAdminRoleID))
 
-	mp, err := mpool.NewMPool("init_system_tenant", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("init_system_tenant", 0)
 	if err != nil {
 		return err
 	}
@@ -5329,7 +5329,7 @@ func InitGeneralTenant(ctx context.Context, ses *Session, ca *tree.CreateAccount
 	ctx = context.WithValue(ctx, defines.RoleIDKey{}, uint32(tenant.GetDefaultRoleID()))
 
 	_, st := trace.Debug(ctx, "InitGeneralTenant.init_general_tenant")
-	mp, err := mpool.NewMPool("init_general_tenant", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("init_general_tenant", 0)
 	if err != nil {
 		st.End()
 		return err
@@ -5641,7 +5641,7 @@ func createTablesInInformationSchemaOfGeneralTenant(ctx context.Context, bh Back
 }
 
 func checkUserExistsOrNot(ctx context.Context, pu *config.ParameterUnit, tenantName string) (bool, error) {
-	mp, err := mpool.NewMPool("check_user_exists", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("check_user_exists", 0)
 	if err != nil {
 		return false, err
 	}
@@ -5685,7 +5685,7 @@ func InitUser(ctx context.Context, ses *Session, tenant *TenantInfo, cu *tree.Cr
 		}
 	}
 
-	mp, err := mpool.NewMPool("init_user", 0, mpool.NoFixed)
+	mp, err := mpool.NewMPool("init_user", 0)
 	if err != nil {
 		return err
 	}

@@ -166,7 +166,7 @@ func (ie *internalExecutor) newCmdSession(ctx context.Context, opts ie.SessionOv
 	//
 	// Session does not have a close call.   We need a Close() call in the Exec/Query method above.
 	//
-	mp, err := mpool.NewMPool("internal_exec_cmd_session", ie.pu.SV.GuestMmuLimitation, mpool.NoFixed)
+	mp, err := mpool.NewMPool("internal_exec_cmd_session", ie.pu.SV.GuestMmuLimitation)
 	if err != nil {
 		logutil.Fatalf("internalExecutor cannot create mpool in newCmdSession")
 		panic(err)
