@@ -302,7 +302,7 @@ type MPool struct {
 	tag     string     // user supplied, for debug/inspect
 	cap     int64      // pool capacity
 	stats   MPoolStats // stats
-	pools   [7]fixedPool
+	pools   [NumFixedPool]fixedPool
 	details *mpoolDetails
 
 	// To remove: this thing is highly unlikely to be of any good use.

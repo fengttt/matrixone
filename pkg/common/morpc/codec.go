@@ -306,16 +306,16 @@ func (c *baseCodec) uncompress(src []byte) ([]byte, error) {
 	// an ErrInvalidSourceShortBuffer, we expand the size and retry.
 	n := len(src) * 2
 	for {
-		dst, err := c.pool.Alloc(n)
+		dstOrig, err := c.pool.Alloc(n)
 		if err != nil {
 			return nil, err
 		}
-		dst, err = uncompress(src, dst)
+		dst, err := uncompress(src, dstOrig)
 		if err == nil {
 			return dst, nil
 		}
 
-		c.pool.Free(dst)
+		c.pool.Free(dstOrig)
 		if err != lz4.ErrInvalidSourceShortBuffer {
 			return nil, err
 		}
@@ -471,12 +471,15 @@ func (c *baseCodec) readMessage(flag byte, data []byte, offset int, expectChecks
 			if err != nil {
 				return err
 			}
-			defer c.pool.Free(dstPayload)
+			// XXX You cannot do this -- later the payload is passed out
+			// in SetPaylodField
+			// defer c.pool.Free(dstPayload)
 			payload = dstPayload
 		}
 	}
 
 	if err := msg.Message.Unmarshal(body); err != nil {
+		c.pool.Free(payload)
 		return err
 	}
 
