@@ -65,10 +65,10 @@ func New(n int) *Bitmap {
 }
 
 // init a bitmap with size
-func (bm *Bitmap) InitWithSize(n int) {
-	bm.emptyFlag = kEmptyFlagEmpty
-	bm.len = int64(n)
-	bm.data = make([]uint64, (n-1)/64+1)
+func (n *Bitmap) InitWithSize(size int) {
+	n.emptyFlag = kEmptyFlagEmpty
+	n.len = int64(size)
+	n.data = make([]uint64, (size-1)/64+1)
 }
 
 func (n *Bitmap) Clone() *Bitmap {

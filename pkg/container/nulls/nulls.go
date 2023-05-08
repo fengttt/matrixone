@@ -127,8 +127,8 @@ func Add(nsp *Nulls, rows ...uint64) {
 }
 
 // Why do we have this two conventions?
-func (n *Nulls) AddRange(start, end uint64) {
-	AddRange(n, start, end)
+func (nsp *Nulls) AddRange(start, end uint64) {
+	AddRange(nsp, start, end)
 }
 func AddRange(nsp *Nulls, start, end uint64) {
 	TryExpand(nsp, int(end+1))
