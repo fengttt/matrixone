@@ -202,18 +202,18 @@ func (n *Bitmap) Ptr() *uint64 {
 
 // IsEmpty returns true if no bit in the Bitmap is set, otherwise it will return false.
 func (n *Bitmap) IsEmpty() bool {
-	if n.emptyFlag == 1 {
+	if n.emptyFlag == kEmptyFlagEmpty {
 		return true
-	} else if n.emptyFlag == -1 {
+	} else if n.emptyFlag == kEmptyFlagNotEmpty {
 		return false
 	}
-	//for i := 0; i < len(n.data); i++ {
-	//	if n.data[i] != 0 {
-	//		n.emptyFlag = -1
-	//		return false
-	//	}
-	//}
-	//n.emptyFlag = 1
+	for i := 0; i < len(n.data); i++ {
+		if n.data[i] != 0 {
+			n.emptyFlag = kEmptyFlagNotEmpty
+			return false
+		}
+	}
+	n.emptyFlag = kEmptyFlagEmpty
 	return true
 }
 
