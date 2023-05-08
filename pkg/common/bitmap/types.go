@@ -21,7 +21,7 @@ type Iterator interface {
 }
 
 const (
-	kEmptyFlagNotSure  = 0
+	//kEmptyFlagNotSure  = 0
 	kEmptyFlagEmpty    = 1
 	kEmptyFlagNotEmpty = -1
 )

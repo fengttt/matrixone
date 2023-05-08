@@ -93,10 +93,7 @@ func Any(nsp *Nulls) bool {
 }
 
 func (nsp *Nulls) IsNil() bool {
-	if nsp == nil {
-		return true
-	}
-	return false
+	return nsp == nil
 }
 
 func (nsp *Nulls) IsEmpty() bool {
