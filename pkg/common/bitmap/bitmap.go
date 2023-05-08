@@ -207,13 +207,13 @@ func (n *Bitmap) IsEmpty() bool {
 	} else if n.emptyFlag == -1 {
 		return false
 	}
-	for i := 0; i < len(n.data); i++ {
-		if n.data[i] != 0 {
-			n.emptyFlag = -1
-			return false
-		}
-	}
-	n.emptyFlag = 1
+	//for i := 0; i < len(n.data); i++ {
+	//	if n.data[i] != 0 {
+	//		n.emptyFlag = -1
+	//		return false
+	//	}
+	//}
+	//n.emptyFlag = 1
 	return true
 }
 
