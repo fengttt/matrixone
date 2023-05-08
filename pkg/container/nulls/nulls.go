@@ -92,6 +92,13 @@ func Any(nsp *Nulls) bool {
 	return !nsp.IsEmpty()
 }
 
+func (nsp *Nulls) IsNil() bool {
+	if nsp == nil {
+		return true
+	}
+	return false
+}
+
 func (nsp *Nulls) IsEmpty() bool {
 	if nsp == nil {
 		return true
@@ -180,7 +187,7 @@ func RemoveRange(nsp *Nulls, start, end uint64) {
 // Range adds the numbers in nsp starting at start and ending at end to m.
 // `bias` represents the starting offset used for the Range Output
 func Range(nsp *Nulls, start, end, bias uint64, m *Nulls) {
-	if !nsp.IsEmpty() {
+	if !nsp.IsNil() {
 		m.InitWithSize(int(end + 1 - bias))
 		for ; start < end; start++ {
 			if nsp.np.Contains(start) {
@@ -253,7 +260,7 @@ func (nsp *Nulls) Unset(row uint64) {
 }
 
 func (nsp *Nulls) Contains(row uint64) bool {
-	return !nsp.IsEmpty() && nsp.np.Contains(row)
+	return !nsp.IsNil() && nsp.np.Contains(row)
 }
 
 func Count(nsp *Nulls) int {
