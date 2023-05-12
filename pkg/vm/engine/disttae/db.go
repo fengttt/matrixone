@@ -16,6 +16,7 @@ package disttae
 
 import (
 	"context"
+
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/txn/client"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
@@ -33,9 +34,8 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 	e.Lock()
 	defer e.Unlock()
 
-	var packer *types.Packer
-	put := e.packerPool.Get(&packer)
-	defer put()
+	poolIdx, ppacker := e.packerPool.Get()
+	defer e.packerPool.Put(poolIdx, ppacker)
 
 	{
 		parts := make(logtailreplay.Partitions, len(e.dnMap))
@@ -73,7 +73,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done := part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF, *ppacker)
 		done()
 		e.catalog.InsertDatabase(bat)
 		bat.Clean(m)
@@ -100,7 +100,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done := part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, *ppacker)
 		done()
 		e.catalog.InsertTable(bat)
 		bat.Clean(m)
@@ -134,7 +134,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done = part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, *ppacker)
 		done()
 		e.catalog.InsertColumns(bat)
 		bat.Clean(m)
@@ -160,7 +160,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done := part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, *ppacker)
 		done()
 		e.catalog.InsertTable(bat)
 		bat.Clean(m)
@@ -194,7 +194,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done = part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, *ppacker)
 		done()
 		e.catalog.InsertColumns(bat)
 		bat.Clean(m)
@@ -220,7 +220,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done := part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_TABLES_REL_ID_IDX, *ppacker)
 		done()
 		e.catalog.InsertTable(bat)
 		bat.Clean(m)
@@ -254,7 +254,7 @@ func (e *Engine) init(ctx context.Context, m *mpool.MPool) error {
 			return err
 		}
 		state, done = part.MutateState()
-		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, packer)
+		state.HandleRowsInsert(ctx, ibat, MO_PRIMARY_OFF+catalog.MO_COLUMNS_ATT_UNIQ_NAME_IDX, *ppacker)
 		done()
 		e.catalog.InsertColumns(bat)
 		bat.Clean(m)

@@ -68,25 +68,26 @@ func NewFileWithChecksumOSFile(
 	underlying *os.File,
 	blockContentSize int,
 	perfCounterSets []*perfcounter.CounterSet,
-) (*FileWithChecksum[*os.File], func()) {
-	var f *FileWithChecksum[*os.File]
-	put := fileWithChecksumPoolOSFile.Get(&f)
-	f.ctx = ctx
-	f.underlying = underlying
-	f.blockSize = blockContentSize + _ChecksumSize
-	f.blockContentSize = blockContentSize
-	f.perfCounterSets = perfCounterSets
-	return f, put
+) (int, *FileWithChecksum[*os.File]) {
+	idx, f := fileWithChecksumPoolOSFile.Get()
+	(*f).ctx = ctx
+	(*f).underlying = underlying
+	(*f).blockSize = blockContentSize + _ChecksumSize
+	(*f).blockContentSize = blockContentSize
+	(*f).perfCounterSets = perfCounterSets
+	return idx, f
+}
+
+func ReleaseFileWithChecksumOSFile(idx int, f *FileWithChecksum[*os.File]) {
+	fileWithChecksumPoolOSFile.Put(idx, f)
 }
 
 var fileWithChecksumPoolOSFile = NewPool(
 	1024,
-	func() *FileWithChecksum[*os.File] {
-		return new(FileWithChecksum[*os.File])
-	},
+	nil, // init
 	func(f *FileWithChecksum[*os.File]) {
 		*f = emptyFileWithChecksumOSFile
-	},
+	}, // reset
 	nil,
 )
 
@@ -102,19 +103,21 @@ func (f *FileWithChecksum[T]) ReadAt(buf []byte, offset int64) (n int, err error
 	}()
 
 	for len(buf) > 0 {
+		var poolIdx int
+		var pdata *[]byte
+		var retdata []byte
 		blockOffset, offsetInBlock := f.contentOffsetToBlockOffset(offset)
-		var data []byte
-		var freeData func()
-		data, freeData, err = f.readBlock(blockOffset)
-		defer freeData()
+		poolIdx, pdata, retdata, err = f.readBlock(blockOffset)
+		defer f.releaseBlock(poolIdx, pdata)
+
 		if err != nil && err != io.EOF {
 			// read error
 			return
 		}
-		data = data[offsetInBlock:]
-		nBytes := copy(buf, data)
+		retdata = retdata[offsetInBlock:]
+		nBytes := copy(buf, *pdata)
 		buf = buf[nBytes:]
-		if err == io.EOF && nBytes != len(data) {
+		if err == io.EOF && nBytes != len(*pdata) {
 			// not fully read
 			err = nil
 		}
@@ -142,28 +145,28 @@ func (f *FileWithChecksum[T]) WriteAt(buf []byte, offset int64) (n int, err erro
 	}()
 
 	for len(buf) > 0 {
-
 		blockOffset, offsetInBlock := f.contentOffsetToBlockOffset(offset)
-		data, freeData, err := f.readBlock(blockOffset)
-		defer freeData()
+		poolIdx, pdata, retdata, err := f.readBlock(blockOffset)
+		defer f.releaseBlock(poolIdx, pdata)
+
 		if err != nil && err != io.EOF {
 			return 0, err
 		}
 
 		// extend data
-		if len(data[offsetInBlock:]) == 0 {
+		if len((*pdata)[offsetInBlock:]) == 0 {
 			nAppend := len(buf)
-			if nAppend+len(data) > f.blockContentSize {
-				nAppend = f.blockContentSize - len(data)
+			if nAppend+len(*pdata) > f.blockContentSize {
+				nAppend = f.blockContentSize - len(*pdata)
 			}
-			data = append(data, make([]byte, nAppend)...)
+			retdata = append(retdata, make([]byte, nAppend)...)
 		}
 
 		// copy to data
-		nBytes := copy(data[offsetInBlock:], buf)
+		nBytes := copy((*pdata)[offsetInBlock:], buf)
 		buf = buf[nBytes:]
 
-		checksum := crc32.Checksum(data, crcTable)
+		checksum := crc32.Checksum(*pdata, crcTable)
 		checksumBytes := make([]byte, _ChecksumSize)
 		binary.LittleEndian.PutUint32(checksumBytes, checksum)
 		if n, err := f.underlying.WriteAt(checksumBytes, blockOffset); err != nil {
@@ -174,7 +177,7 @@ func (f *FileWithChecksum[T]) WriteAt(buf []byte, offset int64) (n int, err erro
 			}, f.perfCounterSets...)
 		}
 
-		if n, err := f.underlying.WriteAt(data, blockOffset+_ChecksumSize); err != nil {
+		if n, err := f.underlying.WriteAt(*pdata, blockOffset+_ChecksumSize); err != nil {
 			return n, err
 		} else {
 			perfcounter.Update(f.ctx, func(c *perfcounter.CounterSet) {
@@ -239,18 +242,26 @@ func (f *FileWithChecksum[T]) contentOffsetToBlockOffset(
 	return
 }
 
-func (f *FileWithChecksum[T]) readBlock(offset int64) (data []byte, freeData func(), err error) {
-
+func (f *FileWithChecksum[T]) readBlock(offset int64) (int, *[]byte, []byte, error) {
+	var poolIdx int
+	var pdata *[]byte
+	// _DefaultBlockSize is the most common block size, so we use it as the default pool
+	// non default block size will just be allocated.   pool Put can handle diff size.
 	if f.blockSize == _DefaultBlockSize {
-		freeData = bytesPoolDefaultBlockSize.Get(&data)
+		poolIdx, pdata = bytesPoolDefaultBlockSize.Get()
 	} else {
-		data = make([]byte, f.blockSize)
-		freeData = noopPut
+		poolIdx = -1
+		data := make([]byte, f.blockSize)
+		pdata = &data
 	}
-	n, err := f.underlying.ReadAt(data, offset)
-	data = data[:n]
+
+	retdata := *pdata
+
+	n, err := f.underlying.ReadAt(retdata, offset)
+	retdata = retdata[:n]
 	if err != nil && err != io.EOF {
-		return nil, nil, err
+		bytesPoolDefaultBlockSize.Put(poolIdx, pdata)
+		return -1, nil, nil, err
 	}
 	perfcounter.Update(f.ctx, func(c *perfcounter.CounterSet) {
 		c.FileService.FileWithChecksum.UnderlyingRead.Add(int64(n))
@@ -258,16 +269,23 @@ func (f *FileWithChecksum[T]) readBlock(offset int64) (data []byte, freeData fun
 
 	if n < _ChecksumSize {
 		// empty
-		return
+		return poolIdx, pdata, retdata, nil
 	}
 
-	checksum := binary.LittleEndian.Uint32(data[:_ChecksumSize])
-	data = data[_ChecksumSize:]
+	checksum := binary.LittleEndian.Uint32(retdata[:_ChecksumSize])
+	retdata = retdata[_ChecksumSize:]
 
-	expectedChecksum := crc32.Checksum(data, crcTable)
+	expectedChecksum := crc32.Checksum(retdata, crcTable)
 	if checksum != expectedChecksum {
-		return nil, nil, ErrChecksumNotMatch
+		bytesPoolDefaultBlockSize.Put(poolIdx, pdata)
+		return -1, nil, nil, ErrChecksumNotMatch
 	}
 
-	return
+	return poolIdx, pdata, retdata, nil
+}
+
+func (f *FileWithChecksum[T]) releaseBlock(poolIdx int, p *[]byte) {
+	if p != nil {
+		bytesPoolDefaultBlockSize.Put(poolIdx, p)
+	}
 }

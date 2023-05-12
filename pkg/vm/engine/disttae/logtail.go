@@ -19,7 +19,6 @@ import (
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
-	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/pb/api"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
 )
@@ -32,10 +31,10 @@ func consumeEntry(
 	e *api.Entry,
 ) error {
 
-	var packer *types.Packer
-	put := engine.packerPool.Get(&packer)
-	defer put()
-	state.HandleLogtailEntry(ctx, e, primarySeqnum, packer)
+	poolIdx, ppacker := engine.packerPool.Get()
+	defer engine.packerPool.Put(poolIdx, ppacker)
+
+	state.HandleLogtailEntry(ctx, e, primarySeqnum, *ppacker)
 
 	if logtailreplay.IsMetaTable(e.TableName) {
 		return nil

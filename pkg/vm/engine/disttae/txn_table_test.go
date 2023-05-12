@@ -34,14 +34,14 @@ func newTxnTableForTest(
 	engine := &Engine{
 		packerPool: fileservice.NewPool(
 			128,
-			func() *types.Packer {
-				return types.NewPacker(mp)
+			func(pp **types.Packer) {
+				*pp = types.NewPacker(mp)
 			},
-			func(packer *types.Packer) {
-				packer.Reset()
+			func(pp **types.Packer) {
+				(*pp).Reset()
 			},
-			func(packer *types.Packer) {
-				packer.FreeMem()
+			func(pp **types.Packer) {
+				(*pp).FreeMem()
 			},
 		),
 	}

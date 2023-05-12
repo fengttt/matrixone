@@ -155,11 +155,10 @@ func (p *profiler) addSample(skip int) {
 		},
 	}
 
-	var pcs []uintptr
-	put := pcsPool.Get(&pcs)
-	defer put()
-	pcs = pcs[:runtime.Callers(2+skip, pcs)]
-	frames := runtime.CallersFrames(pcs)
+	idx, pcs := pcsPool.Get()
+	defer pcsPool.Put(idx, pcs)
+	*pcs = (*pcs)[:runtime.Callers(2+skip, *pcs)]
+	frames := runtime.CallersFrames(*pcs)
 	for {
 		frame, more := frames.Next()
 		if frame.Function == "" {
@@ -178,8 +177,8 @@ func (p *profiler) addSample(skip int) {
 
 var pcsPool = NewPool(
 	1024,
-	func() []uintptr {
-		return make([]uintptr, 128)
+	func(v *[]uintptr) {
+		*v = make([]uintptr, 128)
 	},
 	nil,
 	nil,

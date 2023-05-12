@@ -21,10 +21,12 @@ import (
 )
 
 func TestBytesPool(t *testing.T) {
-	pool := NewPool(8, func() *[]byte {
-		bs := make([]byte, 8)
-		return &bs
-	}, nil, nil)
+	pool := NewPool(8,
+		func(v *[]byte) {
+			*v = make([]byte, 8)
+		},
+		nil,
+		nil)
 
 	wg := new(sync.WaitGroup)
 	for i := 0; i < 200; i++ {
@@ -33,41 +35,39 @@ func TestBytesPool(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 200; j++ {
-				var bs *[]byte
-				put := pool.Get(&bs)
-				defer put()
+				poolidx, bs := pool.Get()
+				defer pool.Put(poolidx, bs)
 				binary.PutUvarint(*bs, uint64(i))
 			}
 		}()
 	}
 	wg.Wait()
-
 }
 
 func BenchmarkBytesPool(b *testing.B) {
-	pool := NewPool(1024, func() any {
-		bs := make([]byte, 8)
-		return &bs
-	}, nil, nil)
+	pool := NewPool(1024,
+		func(v *[]byte) {
+			*v = make([]byte, 8)
+		},
+		nil, nil)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var v any
-		put := pool.Get(&v)
-		put()
+		idx, v := pool.Get()
+		pool.Put(idx, v)
 	}
 }
 
 func BenchmarkParallelBytesPool(b *testing.B) {
-	pool := NewPool(1024, func() any {
-		bs := make([]byte, 8)
-		return &bs
-	}, nil, nil)
+	pool := NewPool(1024,
+		func(v *[]byte) {
+			*v = make([]byte, 8)
+		},
+		nil, nil)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var v any
-			put := pool.Get(&v)
-			put()
+			idx, v := pool.Get()
+			pool.Put(idx, v)
 		}
 	})
 }

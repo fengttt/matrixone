@@ -20,79 +20,84 @@ import (
 )
 
 type Pool[T any] struct {
-	newFunc     func() T
-	finallyFunc func(T)
+	initFunc    func(*T)
+	finallyFunc func(*T)
+	resetFunc   func(*T)
 	pool        []_PoolElem[T]
 	capacity    uint32
 }
 
 type _PoolElem[T any] struct {
 	Taken atomic.Uint32
-	Put   func()
 	Value T
 }
 
+// NewPool creates a new pool with the given capacity.
 func NewPool[T any](
 	capacity uint32,
-	newFunc func() T,
-	resetFunc func(T),
-	finallyFunc func(T),
+	initFunc func(*T),
+	resetFunc func(*T),
+	finallyFunc func(*T),
 ) *Pool[T] {
-
 	pool := &Pool[T]{
 		capacity:    capacity,
-		newFunc:     newFunc,
+		initFunc:    initFunc,
 		finallyFunc: finallyFunc,
+		resetFunc:   resetFunc,
+		pool:        make([]_PoolElem[T], capacity),
 	}
 
 	for i := uint32(0); i < capacity; i++ {
-		i := i
-		value := newFunc()
-		pool.pool = append(pool.pool, _PoolElem[T]{
-			Value: value,
-			Put: func() {
-				if resetFunc != nil {
-					resetFunc(value)
-				}
-				if !pool.pool[i].Taken.CompareAndSwap(1, 0) {
-					panic("bad put")
-				}
-			},
-		})
+		if initFunc != nil {
+			initFunc(&pool.pool[i].Value)
+		}
 	}
-
 	return pool
 }
 
-func (p *Pool[T]) Get(ptr *T) (put func()) {
+// Get returns a index and its value from the pool.
+// If the pool is busy, return index -1 and a new value is created.
+func (p *Pool[T]) Get() (int, *T) {
+	// magic number 4.
 	for i := 0; i < 4; i++ {
 		idx := fastrand() % p.capacity
 		if p.pool[idx].Taken.CompareAndSwap(0, 1) {
-			*ptr = p.pool[idx].Value
-			put = p.pool[idx].Put
-			return
+			return int(idx), &p.pool[idx].Value
 		}
 	}
-	value := p.newFunc()
-	*ptr = value
-	if p.finallyFunc == nil {
-		put = noopPut
+	// If we can't get a value from the pool, we just create a new one.
+	var value T
+	if p.initFunc != nil {
+		p.initFunc(&value)
+	}
+	return -1, &value
+}
+
+func (p *Pool[T]) Put(idx int, value *T) {
+	if idx >= 0 {
+		if p.resetFunc != nil {
+			p.resetFunc(value)
+		}
+
+		if !p.pool[idx].Taken.CompareAndSwap(1, 0) {
+			panic("bad put")
+		}
 	} else {
-		put = func() {
+		if p.finallyFunc != nil {
 			p.finallyFunc(value)
 		}
 	}
-	return
 }
-
-func noopPut() {}
 
 var bytesPoolDefaultBlockSize = NewPool(
 	1024,
-	func() []byte {
-		return make([]byte, _DefaultBlockSize)
+	func(t *[]byte) {
+		*t = make([]byte, _DefaultBlockSize)
 	},
-	nil, nil,
+	// XXX do we need to zero the slice?   Most likely not because this is buffer for io.  But note that
+	// this is not golang semantics.
+	nil,
+	nil,
 )
 
 //go:linkname fastrand runtime.fastrand

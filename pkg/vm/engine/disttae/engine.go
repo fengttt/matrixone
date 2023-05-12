@@ -74,14 +74,14 @@ func New(
 		partitions: make(map[[2]uint64]logtailreplay.Partitions),
 		packerPool: fileservice.NewPool(
 			128,
-			func() *types.Packer {
-				return types.NewPacker(mp)
+			func(p **types.Packer) {
+				*p = types.NewPacker(mp)
 			},
-			func(packer *types.Packer) {
-				packer.Reset()
+			func(p **types.Packer) {
+				(*p).Reset()
 			},
-			func(packer *types.Packer) {
-				packer.FreeMem()
+			func(p **types.Packer) {
+				(*p).FreeMem()
 			},
 		),
 	}

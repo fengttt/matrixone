@@ -608,10 +608,10 @@ func (tbl *txnTable) Write(ctx context.Context, bat *batch.Batch) error {
 		tbl.db.databaseName, tbl.tableName, ibat, tbl.db.txn.dnStores[0], tbl.primaryIdx, false, false); err != nil {
 		return err
 	}
-	var packer *types.Packer
-	put := tbl.db.txn.engine.packerPool.Get(&packer)
-	defer put()
-	if err := tbl.updateLocalState(ctx, INSERT, ibat, packer); err != nil {
+
+	poolIdx, ppacker := tbl.db.txn.engine.packerPool.Get()
+	defer tbl.db.txn.engine.packerPool.Put(poolIdx, ppacker)
+	if err := tbl.updateLocalState(ctx, INSERT, ibat, *ppacker); err != nil {
 		return err
 	}
 
@@ -795,10 +795,9 @@ func (tbl *txnTable) Delete(ctx context.Context, bat *batch.Batch, name string) 
 	}
 	bat.SetAttributes([]string{catalog.Row_ID})
 
-	var packer *types.Packer
-	put := tbl.db.txn.engine.packerPool.Get(&packer)
-	defer put()
-	if err := tbl.updateLocalState(ctx, DELETE, bat, packer); err != nil {
+	idx, ppacker := tbl.db.txn.engine.packerPool.Get()
+	defer tbl.db.txn.engine.packerPool.Put(idx, ppacker)
+	if err := tbl.updateLocalState(ctx, DELETE, bat, *ppacker); err != nil {
 		return err
 	}
 	bat = tbl.db.txn.deleteBatch(bat, tbl.db.databaseId, tbl.tableId)
@@ -878,10 +877,9 @@ func (tbl *txnTable) newMergeReader(ctx context.Context, num int,
 		pkColumn := tbl.tableDef.Cols[tbl.primaryIdx]
 		ok, v := getPkValueByExpr(expr, pkColumn.Name, types.T(pkColumn.Typ.Id))
 		if ok {
-			var packer *types.Packer
-			put := tbl.db.txn.engine.packerPool.Get(&packer)
-			defer put()
-			encodedPrimaryKey = logtailreplay.EncodePrimaryKey(v, packer)
+			idx, pp := tbl.db.txn.engine.packerPool.Get()
+			defer tbl.db.txn.engine.packerPool.Put(idx, pp)
+			encodedPrimaryKey = logtailreplay.EncodePrimaryKey(v, *pp)
 		}
 	}
 
