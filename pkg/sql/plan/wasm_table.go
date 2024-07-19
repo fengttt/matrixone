@@ -21,60 +21,52 @@ import (
 )
 
 const (
-	TableFunctionGenerateSeries = "generate_series"
+	TableFunctionWasmTable = "wasm_table"
 )
+
+/*
+ *  Cols template: why cannot we make this a const and always use this one instance?
+ *
 
 var (
-	GSColDefs = [3][]*plan.ColDef{}
+	wasmTableColDefs = []*plan.ColDef{
+        {
+            Name: result,
+            Typ: plan.Type {
+                Id: int32(types.T_varchar),
+                NotNullable: false,
+                Width: types.MaxVarcharLen,
+            },
+        },
+    }
 )
+*/
 
-func init() {
-	retTyp := types.T_int64.ToType()
-	GSColDefs[0] = []*plan.ColDef{
-		{
-			Name: "result",
-			Typ:  makePlan2Type(&retTyp),
-		},
-	}
-	retTyp = types.T_datetime.ToType()
-	GSColDefs[1] = []*plan.ColDef{
-		{
-			Name: "result",
-			Typ:  makePlan2Type(&retTyp),
-		},
-	}
-	retTyp = types.T_varchar.ToType()
-	GSColDefs[2] = []*plan.ColDef{
-		{
-			Name: "result",
-			Typ:  makePlan2Type(&retTyp),
-		},
-	}
-}
-
-func (builder *QueryBuilder) buildGenerateSeries(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) int32 {
-	var retsIdx int
-	if types.T(exprs[0].Typ.Id).IsInteger() {
-		retsIdx = 0
-	} else if types.T(exprs[0].Typ.Id).IsDateRelate() {
-		retsIdx = 1
-	} else {
-		retsIdx = 2
-	}
+func (builder *QueryBuilder) buildWasmTable(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	node := &plan.Node{
 		NodeType: plan.Node_FUNCTION_SCAN,
 		Stats:    &plan.Stats{},
 		TableDef: &plan.TableDef{
-			TableType: "func_table", //test if ok
-			//Name:               tbl.String(),
+			TableType: "func_table",
+			// Name: tbl.String(),
 			TblFunc: &plan.TableFunction{
-				Name: TableFunctionGenerateSeries,
+				Name: TableFunctionWasmTable,
 			},
-			Cols: GSColDefs[retsIdx],
+			// Cols: wasmTableColDefs
+			Cols: []*plan.ColDef{
+				{
+					Name: "result",
+					Typ: plan.Type{
+						Id:          int32(types.T_varchar),
+						NotNullable: false,
+						Width:       types.MaxVarcharLen,
+					},
+				},
+			},
 		},
 		BindingTags:     []int32{builder.genNewTag()},
-		Children:        []int32{childId},
 		TblFuncExprList: exprs,
+		Children:        []int32{childId},
 	}
-	return builder.appendNode(node, ctx)
+	return builder.appendNode(node, ctx), nil
 }

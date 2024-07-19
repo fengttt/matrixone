@@ -90,7 +90,7 @@ func moLocksPrepare(proc *process.Process, tableFunction *TableFunction) error {
 	return nil
 }
 
-func moLocksCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func moLocksCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	switch tableFunction.ctr.state {
 	case dataProducing:
 
@@ -205,12 +205,12 @@ func moLocksCall(_ int, proc *process.Process, tableFunction *TableFunction, res
 		}
 
 		bat.SetRowCount(bat.Vecs[0].Length())
-		result.Batch = bat
+		ret.Batch = bat
 		tableFunction.ctr.state = dataFinished
 		return false, nil
 
 	case dataFinished:
-		result.Batch = nil
+		ret.Batch = nil
 		return true, nil
 	default:
 		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", tableFunction.ctr.state)
@@ -266,7 +266,7 @@ func moConfigurationsPrepare(proc *process.Process, tableFunction *TableFunction
 	return nil
 }
 
-func moConfigurationsCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func moConfigurationsCall(_ int, proc *process.Process, tableFunction *TableFunction, arg vm.CallResult, result *vm.CallResult) (bool, error) {
 	switch tableFunction.ctr.state {
 	case dataProducing:
 
@@ -424,7 +424,7 @@ func getPointContent(li *query.TxnLockInfo) []byte {
 	return []byte{}
 }
 
-func moTransactionsCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func moTransactionsCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	switch tableFunction.ctr.state {
 	case dataProducing:
 
@@ -556,7 +556,7 @@ func moTransactionsCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		}
 
 		bat.SetRowCount(bat.Vecs[0].Length())
-		result.Batch = bat
+		ret.Batch = bat
 		tableFunction.ctr.state = dataFinished
 		return false, nil
 
@@ -616,7 +616,7 @@ func moCachePrepare(proc *process.Process, tableFunction *TableFunction) error {
 	return nil
 }
 
-func moCacheCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func moCacheCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	switch tableFunction.ctr.state {
 	case dataProducing:
 
@@ -655,12 +655,12 @@ func moCacheCall(_ int, proc *process.Process, tableFunction *TableFunction, res
 		}
 
 		bat.SetRowCount(bat.Vecs[0].Length())
-		result.Batch = bat
+		ret.Batch = bat
 		tableFunction.ctr.state = dataFinished
 		return false, nil
 
 	case dataFinished:
-		result.Batch = nil
+		ret.Batch = nil
 		return true, nil
 	default:
 		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", tableFunction.ctr.state)

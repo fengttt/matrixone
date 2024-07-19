@@ -75,31 +75,20 @@ func (tableFunction *TableFunction) Release() {
 }
 
 type container struct {
-	state          int
-	buf            *batch.Batch
-	generateSeries *generateSeriesArg
-	retSchema      []types.Type
-
+	state            int
+	buf              *batch.Batch
+	tfState          any
+	retSchema        []types.Type
 	executorsForArgs []colexec.ExpressionExecutor
 }
 
-type generateSeriesState int
+type tfStateState int
 
 var (
-	initArg   generateSeriesState = 0
-	genBatch  generateSeriesState = 1
-	genFinish generateSeriesState = 2
+	initArg   tfStateState = 0
+	genBatch  tfStateState = 1
+	genFinish tfStateState = 2
 )
-
-type generateSeriesArg struct {
-	state        generateSeriesState
-	startVecType *types.Type
-	start        any
-	end          any
-	last         any
-	step         any
-	scale        int32 // used by handleDateTime
-}
 
 func (tableFunction *TableFunction) Reset(proc *process.Process, pipelineFailed bool, err error) {
 	tableFunction.Free(proc, pipelineFailed, err)

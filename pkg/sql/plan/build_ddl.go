@@ -3281,6 +3281,10 @@ func buildAlterTableInplace(stmt *tree.AlterTable, ctx CompilerContext) (*Plan, 
 		}
 	}
 
+	//
+	// XXX This is a bug for sure.  indexs is never intialized.
+	// Issue: #17576
+	//
 	for _, str := range indexs {
 		if _, ok := colMap[str]; !ok {
 			return nil, moerr.NewInvalidInput(ctx.GetContext(), "column '%s' is not exist", str)

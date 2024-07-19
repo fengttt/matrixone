@@ -477,7 +477,7 @@ func TestGenerateSeriesCall(t *testing.T) {
 	bat := makeGenerateSeriesBatch(proc)
 	result := vm.NewCallResult()
 	result.Batch = bat
-	end, err := generateSeriesCall(0, proc, arg, &result)
+	end, err := generateSeriesCall(0, proc, arg, vm.CallResult{}, &result)
 	require.Nil(t, err)
 	require.Equal(t, false, end)
 	require.Equal(t, 3, result.Batch.GetVector(0).Length())
@@ -492,7 +492,7 @@ func TestGenerateSeriesCall(t *testing.T) {
 
 	result = vm.NewCallResult()
 	result.Batch = bat
-	end, err = generateSeriesCall(0, proc, arg, &result)
+	end, err = generateSeriesCall(0, proc, arg, vm.CallResult{}, &result)
 	require.Nil(t, err)
 	require.Equal(t, false, end)
 	require.Equal(t, 60, result.Batch.GetVector(0).Length())
@@ -507,7 +507,7 @@ func TestGenerateSeriesCall(t *testing.T) {
 
 	result = vm.NewCallResult()
 	result.Batch = bat
-	end, err = generateSeriesCall(0, proc, arg, &result)
+	end, err = generateSeriesCall(0, proc, arg, vm.CallResult{}, &result)
 	require.Nil(t, err)
 	require.Equal(t, false, end)
 	require.Equal(t, 60, result.Batch.GetVector(0).Length())

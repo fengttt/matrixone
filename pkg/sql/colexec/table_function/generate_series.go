@@ -36,25 +36,38 @@ func generateSeriesString(buf *bytes.Buffer) {
 	buf.WriteString("generate_series")
 }
 
+type generateSeriesArg struct {
+	state        tfStateState
+	startVecType *types.Type
+	start        any
+	end          any
+	last         any
+	step         any
+	scale        int32 // used by handleDateTime
+}
+
 func generateSeriesPrepare(proc *process.Process, tableFunction *TableFunction) (err error) {
 	tableFunction.ctr.executorsForArgs, err = colexec.NewExpressionExecutorsFromPlanExpressions(proc, tableFunction.Args)
-	tableFunction.ctr.generateSeries = new(generateSeriesArg)
+	tableFunction.ctr.tfState = new(generateSeriesArg)
 	return err
 }
 
+func getGenerateSeriesArg(tableFunction *TableFunction) *generateSeriesArg {
+	return tableFunction.ctr.tfState.(*generateSeriesArg)
+}
+
 func resetGenerateSeriesState(proc *process.Process, tableFunction *TableFunction) error {
-	if tableFunction.ctr.generateSeries.state == initArg {
+	tfState := getGenerateSeriesArg(tableFunction)
+	if tfState.state == initArg {
 		var startVec, endVec, stepVec, startVecTmp, endVecTmp *vector.Vector
 		var err error
-		tableFunction.ctr.generateSeries.state = genBatch
+		tfState.state = genBatch
 
 		defer func() {
-			if startVecTmp != nil {
-				startVecTmp.Free(proc.Mp())
-			}
-			if endVecTmp != nil {
-				endVecTmp.Free(proc.Mp())
-			}
+			startVecTmp.Free(proc.Mp())
+			endVecTmp.Free(proc.Mp())
+			// do we need to Free start/end/step vec?   seems all of them
+			// could come from NewConstFixed
 		}()
 
 		if len(tableFunction.ctr.executorsForArgs) == 1 {
@@ -82,8 +95,8 @@ func resetGenerateSeriesState(proc *process.Process, tableFunction *TableFunctio
 		if !startVec.IsConst() || !endVec.IsConst() || (stepVec != nil && !stepVec.IsConst()) {
 			return moerr.NewInvalidInput(proc.Ctx, "generate_series only support scalar")
 		}
-		tableFunction.ctr.generateSeries.startVecType = startVec.GetType()
-		switch tableFunction.ctr.generateSeries.startVecType.Oid {
+		tfState.startVecType = startVec.GetType()
+		switch tfState.startVecType.Oid {
 		case types.T_int32:
 			if endVec.GetType().Oid != types.T_int32 || (stepVec != nil && stepVec.GetType().Oid != types.T_int32) {
 				return moerr.NewInvalidInput(proc.Ctx, "generate_series arguments must be of the same type, type1: %s, type2: %s", startVec.GetType().Oid.String(), endVec.GetType().Oid.String())
@@ -100,13 +113,13 @@ func resetGenerateSeriesState(proc *process.Process, tableFunction *TableFunctio
 			}
 			startSlice := vector.MustFixedCol[types.Datetime](startVec)
 			endSlice := vector.MustFixedCol[types.Datetime](endVec)
-			tableFunction.ctr.generateSeries.start = startSlice[0]
-			tableFunction.ctr.generateSeries.end = endSlice[0]
-			tableFunction.ctr.generateSeries.last = endSlice[0]
+			tfState.start = startSlice[0]
+			tfState.end = endSlice[0]
+			tfState.last = endSlice[0]
 			if stepVec == nil {
 				return moerr.NewInvalidInput(proc.Ctx, "generate_series datetime must specify step")
 			}
-			tableFunction.ctr.generateSeries.step = stepVec.GetStringAt(0)
+			tfState.step = stepVec.GetStringAt(0)
 		case types.T_varchar:
 			if stepVec == nil {
 				return moerr.NewInvalidInput(proc.Ctx, "generate_series must specify step")
@@ -132,35 +145,35 @@ func resetGenerateSeriesState(proc *process.Process, tableFunction *TableFunctio
 
 			newStartSlice := vector.MustFixedCol[types.Datetime](startVecTmp)
 			newEndSlice := vector.MustFixedCol[types.Datetime](endVecTmp)
-			tableFunction.ctr.generateSeries.scale = scale
-			tableFunction.ctr.generateSeries.start = newStartSlice[0]
-			tableFunction.ctr.generateSeries.end = newEndSlice[0]
-			tableFunction.ctr.generateSeries.last = newEndSlice[0]
-			tableFunction.ctr.generateSeries.step = stepVec.GetStringAt(0)
+			tfState.scale = scale
+			tfState.start = newStartSlice[0]
+			tfState.end = newEndSlice[0]
+			tfState.last = newEndSlice[0]
+			tfState.step = stepVec.GetStringAt(0)
 		default:
-			return moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", tableFunction.ctr.generateSeries.startVecType.Oid.String())
+			return moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", tfState.startVecType.Oid.String())
 
 		}
 	}
 
-	if tableFunction.ctr.generateSeries.state == genBatch {
-		switch tableFunction.ctr.generateSeries.startVecType.Oid {
+	if getGenerateSeriesArg(tableFunction).state == genBatch {
+		switch getGenerateSeriesArg(tableFunction).startVecType.Oid {
 		case types.T_int32:
 			computeNewStartAndEnd[int32](tableFunction)
 		case types.T_int64:
 			computeNewStartAndEnd[int64](tableFunction)
 		case types.T_varchar, types.T_datetime:
 			//todo split datetime batch
-			tableFunction.ctr.generateSeries.state = genFinish
+			tfState.state = genFinish
 		default:
-			tableFunction.ctr.generateSeries.state = genFinish
+			tfState.state = genFinish
 		}
 	}
 
 	return nil
 }
 
-func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	var (
 		err  error
 		rbat *batch.Batch
@@ -171,7 +184,9 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		}
 	}()
 
-	if tableFunction.ctr.generateSeries.state == genFinish {
+	tfState := getGenerateSeriesArg(tableFunction)
+
+	if tfState.state == genFinish {
 		return true, nil
 	}
 
@@ -186,34 +201,34 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		rbat.Vecs[i] = proc.GetVector(tableFunction.ctr.retSchema[i])
 	}
 
-	switch tableFunction.ctr.generateSeries.startVecType.Oid {
+	switch tfState.startVecType.Oid {
 	case types.T_int32:
-		start := tableFunction.ctr.generateSeries.start.(int32)
-		end := tableFunction.ctr.generateSeries.end.(int32)
-		step := tableFunction.ctr.generateSeries.step.(int32)
+		start := tfState.start.(int32)
+		end := tfState.end.(int32)
+		step := tfState.step.(int32)
 		err = handleInt(start, end, step, generateInt32, proc, rbat)
 		if err != nil {
 			return false, err
 		}
 	case types.T_int64:
-		start := tableFunction.ctr.generateSeries.start.(int64)
-		end := tableFunction.ctr.generateSeries.end.(int64)
-		step := tableFunction.ctr.generateSeries.step.(int64)
+		start := tfState.start.(int64)
+		end := tfState.end.(int64)
+		step := tfState.step.(int64)
 		err = handleInt(start, end, step, generateInt64, proc, rbat)
 		if err != nil {
 			return false, err
 		}
 	case types.T_datetime:
-		start := tableFunction.ctr.generateSeries.start.(types.Datetime)
-		end := tableFunction.ctr.generateSeries.end.(types.Datetime)
-		step := tableFunction.ctr.generateSeries.step.(string)
+		start := tfState.start.(types.Datetime)
+		end := tfState.end.(types.Datetime)
+		step := tfState.step.(string)
 
 		err = handleDatetime(start, end, step, -1, proc, rbat)
 	case types.T_varchar:
-		start := tableFunction.ctr.generateSeries.start.(types.Datetime)
-		end := tableFunction.ctr.generateSeries.end.(types.Datetime)
-		step := tableFunction.ctr.generateSeries.step.(string)
-		scale := tableFunction.ctr.generateSeries.scale
+		start := tfState.start.(types.Datetime)
+		end := tfState.end.(types.Datetime)
+		step := tfState.step.(string)
+		scale := tfState.scale
 		rbat.Vecs[0].GetType().Scale = scale
 
 		err = handleDatetime(start, end, step, scale, proc, rbat)
@@ -222,10 +237,10 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		}
 
 	default:
-		return false, moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", tableFunction.ctr.generateSeries.startVecType.Oid.String())
+		return false, moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", tfState.startVecType.Oid.String())
 
 	}
-	result.Batch = rbat
+	ret.Batch = rbat
 	return false, nil
 }
 
@@ -245,6 +260,7 @@ func judgeArgs[T generateSeriesNumber](ctx context.Context, start, end, step T) 
 }
 
 func initStartAndEnd[T generateSeriesNumber](tableFunction *TableFunction, startVec, endVec, stepVec *vector.Vector) {
+	tfState := getGenerateSeriesArg(tableFunction)
 	startSlice := vector.MustFixedCol[T](startVec)
 	endSlice := vector.MustFixedCol[T](endVec)
 	start := startSlice[0]
@@ -263,16 +279,17 @@ func initStartAndEnd[T generateSeriesNumber](tableFunction *TableFunction, start
 	}
 	end = end - step
 
-	tableFunction.ctr.generateSeries.start = start
-	tableFunction.ctr.generateSeries.end = end
-	tableFunction.ctr.generateSeries.last = last
-	tableFunction.ctr.generateSeries.step = step
+	tfState.start = start
+	tfState.end = end
+	tfState.last = last
+	tfState.step = step
 }
 
 func computeNewStartAndEnd[T generateSeriesNumber](tableFunction *TableFunction) {
-	step := tableFunction.ctr.generateSeries.step.(T)
-	newStart := tableFunction.ctr.generateSeries.end.(T) + step
-	last := tableFunction.ctr.generateSeries.last.(T)
+	tfState := getGenerateSeriesArg(tableFunction)
+	step := tfState.step.(T)
+	newStart := tfState.end.(T) + step
+	last := tfState.last.(T)
 	newEnd := newStart + step*T(addBatchSize)
 	if step > 0 {
 		if newEnd < newStart {
@@ -292,10 +309,10 @@ func computeNewStartAndEnd[T generateSeriesNumber](tableFunction *TableFunction)
 		}
 	}
 	if newEnd == last {
-		tableFunction.ctr.generateSeries.state = genFinish
+		tfState.state = genFinish
 	}
-	tableFunction.ctr.generateSeries.start = newStart
-	tableFunction.ctr.generateSeries.end = newEnd
+	tfState.start = newStart
+	tfState.end = newEnd
 }
 
 func trimStep(step string) string {

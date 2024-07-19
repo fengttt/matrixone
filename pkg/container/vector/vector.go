@@ -431,6 +431,10 @@ func GetPtrAt[T any](v *Vector, idx int64) *T {
 }
 
 func (v *Vector) Free(mp *mpool.MPool) {
+	if v == nil {
+		return
+	}
+
 	if !v.cantFreeData {
 		mp.Free(v.data)
 	}

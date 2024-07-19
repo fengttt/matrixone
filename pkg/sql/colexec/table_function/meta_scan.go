@@ -31,22 +31,21 @@ func metaScanPrepare(proc *process.Process, tableFunction *TableFunction) (err e
 	return err
 }
 
-func metaScanCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func metaScanCall(_ int, proc *process.Process, tableFunction *TableFunction, arg vm.CallResult, ret *vm.CallResult) (bool, error) {
 	var (
 		err  error
 		rbat *batch.Batch
 	)
-	bat := result.Batch
 	defer func() {
 		if err != nil && rbat != nil {
 			rbat.Clean(proc.Mp())
 		}
 	}()
-	if bat == nil {
+	if arg.Batch == nil {
 		return true, nil
 	}
 
-	v, err := tableFunction.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{bat}, nil)
+	v, err := tableFunction.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{arg.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
@@ -87,6 +86,6 @@ func metaScanCall(_ int, proc *process.Process, tableFunction *TableFunction, re
 	}
 	rbat.SetAttributes(catalog.MetaColNames)
 	rbat.SetRowCount(1)
-	result.Batch = rbat
+	ret.Batch = rbat
 	return false, nil
 }

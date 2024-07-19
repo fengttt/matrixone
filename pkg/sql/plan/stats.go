@@ -926,7 +926,7 @@ func ReCalcNodeStats(nodeID int32, builder *QueryBuilder, recursive bool, leafNo
 }
 
 func computeFunctionScan(name string, exprs []*Expr, nodeStat *Stats) bool {
-	if name != "generate_series" {
+	if name != TableFunctionGenerateSeries {
 		return false
 	}
 	var cost float64

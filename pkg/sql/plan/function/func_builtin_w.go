@@ -36,16 +36,16 @@ import (
 // try_wasm is the same as startlark, but it will error if there is error
 // when running wasm.  Instead, it will just return NULL.
 
-type opBuiltInWasm struct {
+type OpBuiltInWasm struct {
 	// do we need to call plugin.Close()?
 	plugin *extism.Plugin
 }
 
-func newOpBuiltInWasm() *opBuiltInWasm {
-	return &opBuiltInWasm{}
+func newOpBuiltInWasm() *OpBuiltInWasm {
+	return &OpBuiltInWasm{}
 }
 
-func (op *opBuiltInWasm) buildWasm(ctx context.Context, url string) error {
+func (op *OpBuiltInWasm) BuildWasm(ctx context.Context, url string) error {
 	var err error
 
 	// manifest is created from wasm url.
@@ -65,22 +65,22 @@ func (op *opBuiltInWasm) buildWasm(ctx context.Context, url string) error {
 	return err
 }
 
-func (op *opBuiltInWasm) runWasm(fn string, arg []byte) ([]byte, error) {
-	_, out, err := op.plugin.Call(fn, arg)
-	return out, err
+func (op *OpBuiltInWasm) RunWasm(fn string, arg []byte) (uint32, []byte, error) {
+	rc, out, err := op.plugin.Call(fn, arg)
+	return rc, out, err
 }
 
-func (op *opBuiltInWasm) wasm(params []*vector.Vector, result vector.FunctionResultWrapper,
+func (op *OpBuiltInWasm) wasm(params []*vector.Vector, result vector.FunctionResultWrapper,
 	proc *process.Process, length int, selectList *FunctionSelectList) error {
 	return op.tryWasmImpl(params, result, proc, length, selectList, false)
 }
 
-func (op *opBuiltInWasm) tryWasm(params []*vector.Vector, result vector.FunctionResultWrapper,
+func (op *OpBuiltInWasm) tryWasm(params []*vector.Vector, result vector.FunctionResultWrapper,
 	proc *process.Process, length int, selectList *FunctionSelectList) error {
 	return op.tryWasmImpl(params, result, proc, length, selectList, true)
 }
 
-func (op *opBuiltInWasm) tryWasmImpl(params []*vector.Vector, result vector.FunctionResultWrapper,
+func (op *OpBuiltInWasm) tryWasmImpl(params []*vector.Vector, result vector.FunctionResultWrapper,
 	proc *process.Process, length int, selectList *FunctionSelectList, isTry bool) error {
 	p1 := vector.GenerateFunctionStrParameter(params[0])
 	if !params[0].IsConst() {
@@ -90,7 +90,7 @@ func (op *opBuiltInWasm) tryWasmImpl(params []*vector.Vector, result vector.Func
 	if isnull {
 		return moerr.NewInvalidInput(proc.Ctx, "wasm url cannot be null.")
 	}
-	if err := op.buildWasm(proc.Ctx, string(url)); err != nil {
+	if err := op.BuildWasm(proc.Ctx, string(url)); err != nil {
 		return err
 	}
 
@@ -115,7 +115,7 @@ func (op *opBuiltInWasm) tryWasmImpl(params []*vector.Vector, result vector.Func
 			continue
 		}
 
-		res, err := op.runWasm(string(fn), arg)
+		_, res, err := op.RunWasm(string(fn), arg)
 		if err != nil {
 			if isTry {
 				rs.AppendBytes(nil, true)

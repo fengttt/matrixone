@@ -43,7 +43,7 @@ func metadataScanPrepare(proc *process.Process, tableFunction *TableFunction) (e
 	return err
 }
 
-func metadataScan(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func metadataScan(_ int, proc *process.Process, tableFunction *TableFunction, arg vm.CallResult, ret *vm.CallResult) (bool, error) {
 	var (
 		err         error
 		source, col *vector.Vector
@@ -55,16 +55,15 @@ func metadataScan(_ int, proc *process.Process, tableFunction *TableFunction, re
 		}
 	}()
 
-	bat := result.Batch
-	if bat == nil {
+	if arg.Batch == nil {
 		return true, nil
 	}
 
-	source, err = tableFunction.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{bat}, nil)
+	source, err = tableFunction.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{arg.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
-	col, err = tableFunction.ctr.executorsForArgs[1].Eval(proc, []*batch.Batch{bat}, nil)
+	col, err = tableFunction.ctr.executorsForArgs[1].Eval(proc, []*batch.Batch{arg.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
@@ -96,7 +95,7 @@ func metadataScan(_ int, proc *process.Process, tableFunction *TableFunction, re
 		return false, err
 	}
 
-	result.Batch = rbat
+	ret.Batch = rbat
 	return false, nil
 }
 

@@ -24,6 +24,11 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
 )
 
+const (
+	TableFunctionProcesslist = "processlist"
+	TableFunctionMoSession   = "mo_sessions"
+)
+
 var SessionsColTypes []types.Type
 
 func (builder *QueryBuilder) buildProcesslist(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
@@ -56,7 +61,7 @@ func (builder *QueryBuilder) buildProcesslist(tbl *tree.TableFunction, ctx *Bind
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "processlist",
+				Name: TableFunctionProcesslist,
 			},
 			Cols: sessionsColDefs,
 		},

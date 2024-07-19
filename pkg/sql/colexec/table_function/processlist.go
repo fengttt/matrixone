@@ -45,7 +45,7 @@ func processlistPrepare(proc *process.Process, tableFunction *TableFunction) err
 	return nil
 }
 
-func processlist(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func processlist(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	switch tableFunction.ctr.state {
 	case dataProducing:
 		sessions, err := fetchSessions(proc.Ctx, proc.GetSessionInfo().Account, proc.Base.QueryClient)
@@ -155,12 +155,12 @@ func processlist(_ int, proc *process.Process, tableFunction *TableFunction, res
 			}
 		}
 		bat.SetRowCount(bat.Vecs[0].Length())
-		result.Batch = bat
+		ret.Batch = bat
 		tableFunction.ctr.state = dataFinished
 		return false, nil
 
 	case dataFinished:
-		result.Batch = nil
+		ret.Batch = nil
 		return true, nil
 	default:
 		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", tableFunction.ctr.state)

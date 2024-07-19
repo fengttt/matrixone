@@ -23,6 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
+	plan2 "github.com/matrixorigin/matrixone/pkg/sql/plan"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
@@ -40,9 +41,13 @@ func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, 
 	)
 	idx := tableFunction.GetIdx()
 
-	result, err := tableFunction.GetChildren(0).Call(proc)
+	// Pass the argResult to the table function as input args.
+	// get result back in the tblResult.
+	argResult, err := tableFunction.GetChildren(0).Call(proc)
+	tblResult := &tblArg.GetOperatorBase().Result
+
 	if err != nil {
-		return result, err
+		return *tblResult, err
 	}
 
 	anal := proc.GetAnalyze(tableFunction.GetIdx(), tableFunction.GetParallelIdx(), tableFunction.GetParallelMajor())
@@ -50,67 +55,74 @@ func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, 
 	defer anal.Stop()
 
 	switch tblArg.FuncName {
-	case "unnest":
-		f, e = unnestCall(idx, proc, tblArg, &result)
-	case "generate_series":
-		f, e = generateSeriesCall(idx, proc, tblArg, &result)
-	case "meta_scan":
-		f, e = metaScanCall(idx, proc, tblArg, &result)
-	case "current_account":
-		f, e = currentAccountCall(idx, proc, tblArg, &result)
-	case "metadata_scan":
-		f, e = metadataScan(idx, proc, tblArg, &result)
-	case "processlist":
-		f, e = processlist(idx, proc, tblArg, &result)
-	case "mo_locks":
-		f, e = moLocksCall(idx, proc, tblArg, &result)
-	case "mo_configurations":
-		f, e = moConfigurationsCall(idx, proc, tblArg, &result)
-	case "mo_transactions":
-		f, e = moTransactionsCall(idx, proc, tblArg, &result)
-	case "mo_cache":
-		f, e = moCacheCall(idx, proc, tblArg, &result)
+	case plan2.TableFunctionUnnest:
+		f, e = unnestCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionGenerateSeries:
+		f, e = generateSeriesCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMetaScan:
+		f, e = metaScanCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionCurrentAccount:
+		f, e = currentAccountCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMetadataScan:
+		f, e = metadataScan(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionProcesslist:
+		f, e = processlist(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMoLocks:
+		f, e = moLocksCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMoConfigurations:
+		f, e = moConfigurationsCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMoTransactions:
+		f, e = moTransactionsCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionMoCache:
+		f, e = moCacheCall(idx, proc, tblArg, argResult, tblResult)
+	case plan2.TableFunctionWasmTable:
+		f, e = wasmTableCall(idx, proc, tblArg, argResult, tblResult)
 	default:
-		result.Status = vm.ExecStop
-		return result, moerr.NewNotSupported(proc.Ctx, fmt.Sprintf("table function %s is not supported", tblArg.FuncName))
+		tblResult.Status = vm.ExecStop
+		return *tblResult, moerr.NewNotSupported(proc.Ctx, fmt.Sprintf("table function %s is not supported", tblArg.FuncName))
 	}
 	if e != nil || f {
 		if f {
-			result.Status = vm.ExecStop
-			return result, e
+			tblResult.Status = vm.ExecStop
+			return *tblResult, e
 		}
-		return result, e
+		return *tblResult, e
 	}
 
 	if tableFunction.ctr.buf != nil {
 		proc.PutBatch(tableFunction.ctr.buf)
 		tableFunction.ctr.buf = nil
 	}
-	tableFunction.ctr.buf = result.Batch
+	tableFunction.ctr.buf = tblResult.Batch
+	// XXX
+	// Ownership transferred?  NO ...
+	// So we cannot do the following, because the batch in result is used by
+	// later operators.
+	// tblResult.Batch = nil
 	if tableFunction.ctr.buf == nil {
-		result.Status = vm.ExecStop
-		return result, e
+		tblResult.Status = vm.ExecStop
+		return *tblResult, e
 	}
 	if tableFunction.ctr.buf.IsEmpty() {
-		return result, e
+		return *tblResult, e
 	}
 
 	if tableFunction.ctr.buf.VectorCount() != len(tblArg.ctr.retSchema) {
-		result.Status = vm.ExecStop
-		return result, moerr.NewInternalError(proc.Ctx, "table function %s return length mismatch", tblArg.FuncName)
+		tblResult.Status = vm.ExecStop
+		return *tblResult, moerr.NewInternalError(proc.Ctx, "table function %s return length mismatch", tblArg.FuncName)
 	}
 	for i := range tblArg.ctr.retSchema {
 		if tableFunction.ctr.buf.GetVector(int32(i)).GetType().Oid != tblArg.ctr.retSchema[i].Oid {
-			result.Status = vm.ExecStop
-			return result, moerr.NewInternalError(proc.Ctx, "table function %s return type mismatch", tblArg.FuncName)
+			tblResult.Status = vm.ExecStop
+			return *tblResult, moerr.NewInternalError(proc.Ctx, "table function %s return type mismatch", tblArg.FuncName)
 		}
 	}
 
 	if f {
-		result.Status = vm.ExecStop
-		return result, e
+		tblResult.Status = vm.ExecStop
+		return *tblResult, e
 	}
-	return result, e
+	return *tblResult, e
 }
 
 func (tableFunction *TableFunction) String(buf *bytes.Buffer) {
@@ -132,27 +144,34 @@ func (tableFunction *TableFunction) Prepare(proc *process.Process) error {
 	}
 	tblArg.ctr.retSchema = retSchema
 
+	// Set status to ExecNext.   This really should have been the default setting.
+	// but we set Stop as default.
+	tableFunction.GetOperatorBase().Result.Status = vm.ExecNext
+
 	switch tblArg.FuncName {
-	case "unnest":
+	case plan2.TableFunctionUnnest:
 		return unnestPrepare(proc, tblArg)
-	case "generate_series":
+	case plan2.TableFunctionGenerateSeries:
 		return generateSeriesPrepare(proc, tblArg)
-	case "meta_scan":
+	case plan2.TableFunctionMetaScan:
 		return metaScanPrepare(proc, tblArg)
-	case "current_account":
+	case plan2.TableFunctionCurrentAccount:
 		return currentAccountPrepare(proc, tblArg)
-	case "metadata_scan":
+	case plan2.TableFunctionMetadataScan:
 		return metadataScanPrepare(proc, tblArg)
-	case "processlist":
+	case plan2.TableFunctionProcesslist:
 		return processlistPrepare(proc, tblArg)
-	case "mo_locks":
+	case plan2.TableFunctionMoLocks:
 		return moLocksPrepare(proc, tblArg)
-	case "mo_configurations":
+	case plan2.TableFunctionMoConfigurations:
 		return moConfigurationsPrepare(proc, tblArg)
-	case "mo_transactions":
+	case plan2.TableFunctionMoTransactions:
 		return moTransactionsPrepare(proc, tblArg)
-	case "mo_cache":
+	case plan2.TableFunctionMoCache:
 		return moCachePrepare(proc, tblArg)
+	case plan2.TableFunctionWasmTable:
+		return wasmTablePrepare(proc, tblArg)
+
 	default:
 		return moerr.NewNotSupported(proc.Ctx, fmt.Sprintf("table function %s is not supported", tblArg.FuncName))
 	}

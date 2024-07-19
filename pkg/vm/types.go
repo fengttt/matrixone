@@ -142,6 +142,7 @@ type Operator interface {
 type OperatorBase struct {
 	OperatorInfo
 	Children []Operator
+	Result   CallResult
 }
 
 func (o *OperatorBase) SetInfo(info *OperatorInfo) {

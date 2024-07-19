@@ -72,6 +72,10 @@ const (
 	MoLocksColTypeLockWait
 )
 
+const (
+	TableFunctionMoLocks = "mo_locks"
+)
+
 func (builder *QueryBuilder) buildMoLocks(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	var err error
 
@@ -93,7 +97,7 @@ func (builder *QueryBuilder) buildMoLocks(tbl *tree.TableFunction, ctx *BindCont
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "mo_locks",
+				Name: TableFunctionMoLocks,
 			},
 			Cols: colDefs,
 		},
@@ -142,6 +146,10 @@ const (
 	MoConfigColTypeInternal
 )
 
+const (
+	TableFunctionMoConfigurations = "mo_configurations"
+)
+
 func (builder *QueryBuilder) buildMoConfigurations(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	var err error
 
@@ -163,7 +171,7 @@ func (builder *QueryBuilder) buildMoConfigurations(tbl *tree.TableFunction, ctx 
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "mo_configurations",
+				Name: TableFunctionMoConfigurations,
 			},
 			Cols: colDefs,
 		},
@@ -244,6 +252,10 @@ const (
 	MoTransactionsColTypeLockMode
 )
 
+const (
+	TableFunctionMoTransactions = "mo_transactions"
+)
+
 func (builder *QueryBuilder) buildMoTransactions(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	var err error
 
@@ -265,7 +277,7 @@ func (builder *QueryBuilder) buildMoTransactions(tbl *tree.TableFunction, ctx *B
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "mo_transactions",
+				Name: TableFunctionMoTransactions,
 			},
 			Cols: colDefs,
 		},
@@ -314,6 +326,10 @@ const (
 	MoCacheColTypeHitRatio
 )
 
+const (
+	TableFunctionMoCache = "mo_cache"
+)
+
 func (builder *QueryBuilder) buildMoCache(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	var err error
 
@@ -335,7 +351,7 @@ func (builder *QueryBuilder) buildMoCache(tbl *tree.TableFunction, ctx *BindCont
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "mo_cache",
+				Name: TableFunctionMoCache,
 			},
 			Cols: colDefs,
 		},

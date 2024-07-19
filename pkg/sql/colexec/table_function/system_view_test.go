@@ -332,7 +332,7 @@ func Test_gettingInfo(t *testing.T) {
 	for _, tt := range tests4 {
 		t.Run(tt.name, func(t *testing.T) {
 			result := vm.NewCallResult()
-			got, err := moCacheCall(tt.args.in0, tt.args.proc, tt.args.arg, &result)
+			got, err := moCacheCall(tt.args.in0, tt.args.proc, tt.args.arg, vm.CallResult{}, &result)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("moCacheCall() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -390,7 +390,7 @@ func Test_gettingInfo(t *testing.T) {
 	for _, tt := range tests5 {
 		t.Run(tt.name, func(t *testing.T) {
 			result := vm.NewCallResult()
-			got, err := moTransactionsCall(tt.args.in0, tt.args.proc, tt.args.arg, &result)
+			got, err := moTransactionsCall(tt.args.in0, tt.args.proc, tt.args.arg, vm.CallResult{}, &result)
 			if !tt.wantErr(t, err, fmt.Sprintf("moTransactionsCall(%v, %v, %v)", tt.args.in0, tt.args.proc, tt.args.arg)) {
 				return
 			}
@@ -443,7 +443,7 @@ func Test_gettingInfo(t *testing.T) {
 	for _, tt := range tests6 {
 		t.Run(tt.name, func(t *testing.T) {
 			result := vm.NewCallResult()
-			got, err := moLocksCall(tt.args.in0, tt.args.proc, tt.args.arg, &result)
+			got, err := moLocksCall(tt.args.in0, tt.args.proc, tt.args.arg, vm.CallResult{}, &result)
 			if !tt.wantErr(t, err, fmt.Sprintf("moLocksCall(%v, %v, %v)", tt.args.in0, tt.args.proc, tt.args.arg)) {
 				return
 			}
@@ -602,7 +602,7 @@ func Test_moConfigurationsCall(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := vm.NewCallResult()
-			got, err := moConfigurationsCall(tt.args.in0, tt.args.proc, tt.args.arg, &result)
+			got, err := moConfigurationsCall(tt.args.in0, tt.args.proc, tt.args.arg, vm.CallResult{}, &result)
 			if !tt.wantErr(t, err, fmt.Sprintf("moConfigurationsCall(%v, %v, %v)", tt.args.in0, tt.args.proc, tt.args.arg)) {
 				return
 			}

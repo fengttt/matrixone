@@ -21,6 +21,10 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
 )
 
+const (
+	TableFunctionUnnest = "unnest"
+)
+
 var (
 	defaultColDefs = []*plan.ColDef{
 		{
@@ -114,7 +118,7 @@ func (builder *QueryBuilder) buildUnnest(tbl *tree.TableFunction, ctx *BindConte
 			TableType: "func_table", //test if ok
 			//Name:               tbl.String(),
 			TblFunc: &plan.TableFunction{
-				Name:  "unnest",
+				Name:  TableFunctionUnnest,
 				Param: []byte(colName),
 			},
 			Cols: colDefs,

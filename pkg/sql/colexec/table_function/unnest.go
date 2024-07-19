@@ -87,7 +87,7 @@ func unnestPrepare(proc *process.Process, arg *TableFunction) error {
 	return err
 }
 
-func unnestCall(_ int, proc *process.Process, arg *TableFunction, result *vm.CallResult) (bool, error) {
+func unnestCall(_ int, proc *process.Process, arg *TableFunction, argRes vm.CallResult, ret *vm.CallResult) (bool, error) {
 	var (
 		err      error
 		rbat     *batch.Batch
@@ -97,35 +97,36 @@ func unnestCall(_ int, proc *process.Process, arg *TableFunction, result *vm.Cal
 		path     bytejson.Path
 		outer    bool
 	)
-	bat := result.Batch
 	defer func() {
 		if err != nil && rbat != nil {
 			rbat.Clean(proc.Mp())
 		}
 	}()
-	if bat == nil {
+	if argRes.Batch == nil {
 		return true, nil
 	}
-	if bat.IsEmpty() {
-		proc.PutBatch(bat)
-		result.Batch = batch.EmptyBatch
+
+	if argRes.Batch.IsEmpty() {
+		// None of your business here.
+		// proc.PutBatch(argRes.Batch)
+		ret.Batch = batch.EmptyBatch
 		return false, nil
 	}
-	jsonVec, err = arg.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{bat}, nil)
+	jsonVec, err = arg.ctr.executorsForArgs[0].Eval(proc, []*batch.Batch{argRes.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
 	if jsonVec.GetType().Oid != types.T_json && jsonVec.GetType().Oid != types.T_varchar {
 		return false, moerr.NewInvalidInput(proc.Ctx, fmt.Sprintf("unnest: first argument must be json or string, but got %s", jsonVec.GetType().String()))
 	}
-	pathVec, err = arg.ctr.executorsForArgs[1].Eval(proc, []*batch.Batch{bat}, nil)
+	pathVec, err = arg.ctr.executorsForArgs[1].Eval(proc, []*batch.Batch{argRes.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
 	if pathVec.GetType().Oid != types.T_varchar {
 		return false, moerr.NewInvalidInput(proc.Ctx, fmt.Sprintf("unnest: second argument must be string, but got %s", pathVec.GetType().String()))
 	}
-	outerVec, err = arg.ctr.executorsForArgs[2].Eval(proc, []*batch.Batch{bat}, nil)
+	outerVec, err = arg.ctr.executorsForArgs[2].Eval(proc, []*batch.Batch{argRes.Batch}, nil)
 	if err != nil {
 		return false, err
 	}
@@ -153,7 +154,7 @@ func unnestCall(_ int, proc *process.Process, arg *TableFunction, result *vm.Cal
 	if err != nil {
 		return false, err
 	}
-	result.Batch = rbat
+	ret.Batch = rbat
 	return false, nil
 }
 

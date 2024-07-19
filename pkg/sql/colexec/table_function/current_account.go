@@ -31,7 +31,7 @@ func currentAccountPrepare(proc *process.Process, tableFunction *TableFunction) 
 	return nil
 }
 
-func currentAccountCall(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
+func currentAccountCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
 	var err error
 
 	switch tableFunction.ctr.state {
@@ -60,12 +60,12 @@ func currentAccountCall(_ int, proc *process.Process, tableFunction *TableFuncti
 			}
 		}
 		rbat.SetRowCount(1)
-		result.Batch = rbat
+		ret.Batch = rbat
 		tableFunction.ctr.state = dataFinished
 		return false, nil
 
 	case dataFinished:
-		result.Batch = nil
+		ret.Batch = nil
 		return true, nil
 	default:
 		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", tableFunction.ctr.state)

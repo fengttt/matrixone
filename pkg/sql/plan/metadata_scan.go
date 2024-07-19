@@ -22,6 +22,10 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
 )
 
+const (
+	TableFunctionMetadataScan = "metadata_scan"
+)
+
 var (
 	MetadataScanColDefs   = []*plan.ColDef{}
 	MetadataScanColTypes  = []types.Type{}
@@ -94,7 +98,7 @@ func (builder *QueryBuilder) buildMetadataScan(tbl *tree.TableFunction, ctx *Bin
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "metadata_scan",
+				Name: TableFunctionMetadataScan,
 			},
 			Cols: MetadataScanColDefs,
 		},

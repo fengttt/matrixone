@@ -176,9 +176,11 @@ func TestUnnestCall(t *testing.T) {
 			ut.arg.Args = makeConstInputExprs(ut.jsons, ut.paths, ut.jsonType, ut.outers)
 			err := unnestPrepare(ut.proc, ut.arg)
 			require.Nil(t, err)
+
+			input := vm.NewCallResult()
+			input.Batch = inputBat
 			result := vm.NewCallResult()
-			result.Batch = inputBat
-			end, err := unnestCall(0, ut.proc, ut.arg, &result)
+			end, err := unnestCall(0, ut.proc, ut.arg, input, &result)
 			require.Nil(t, err)
 			require.False(t, end)
 			cleanResult(&result, ut.proc)
@@ -194,8 +196,9 @@ func TestUnnestCall(t *testing.T) {
 			err := unnestPrepare(ut.proc, ut.arg)
 			require.Nil(t, err)
 			result := vm.NewCallResult()
-			result.Batch = inputBat
-			end, err := unnestCall(0, ut.proc, ut.arg, &result)
+			input := vm.NewCallResult()
+			input.Batch = inputBat
+			end, err := unnestCall(0, ut.proc, ut.arg, input, &result)
 			require.Nil(t, err)
 			require.False(t, end)
 			cleanResult(&result, ut.proc)

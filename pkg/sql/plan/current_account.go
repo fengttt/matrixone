@@ -21,6 +21,10 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
 )
 
+const (
+	TableFunctionCurrentAccount = "current_account"
+)
+
 func (builder *QueryBuilder) buildCurrentAccount(tbl *tree.TableFunction, ctx *BindContext, exprs []*plan.Expr, childId int32) (int32, error) {
 	if len(tbl.Func.Exprs) > 0 {
 		return 0, moerr.NewInvalidArg(builder.GetContext(), "current_account function has invalid input args length", len(tbl.Func.Exprs))
@@ -31,7 +35,7 @@ func (builder *QueryBuilder) buildCurrentAccount(tbl *tree.TableFunction, ctx *B
 		TableDef: &plan.TableDef{
 			TableType: "func_table",
 			TblFunc: &plan.TableFunction{
-				Name: "current_account",
+				Name: TableFunctionCurrentAccount,
 			},
 			Cols: []*plan.ColDef{
 				{

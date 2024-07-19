@@ -4080,26 +4080,28 @@ func (builder *QueryBuilder) buildTableFunction(tbl *tree.TableFunction, ctx *Bi
 	}
 	id := tbl.Id()
 	switch id {
-	case "unnest":
+	case TableFunctionUnnest:
 		nodeId, err = builder.buildUnnest(tbl, ctx, exprs, childId)
-	case "generate_series":
+	case TableFunctionGenerateSeries:
 		nodeId = builder.buildGenerateSeries(tbl, ctx, exprs, childId)
-	case "meta_scan":
+	case TableFunctionMetaScan:
 		nodeId, err = builder.buildMetaScan(tbl, ctx, exprs, childId)
-	case "current_account":
+	case TableFunctionCurrentAccount:
 		nodeId, err = builder.buildCurrentAccount(tbl, ctx, exprs, childId)
-	case "metadata_scan":
+	case TableFunctionMetadataScan:
 		nodeId = builder.buildMetadataScan(tbl, ctx, exprs, childId)
-	case "processlist", "mo_sessions":
+	case TableFunctionProcesslist, TableFunctionMoSession:
 		nodeId, err = builder.buildProcesslist(tbl, ctx, exprs, childId)
-	case "mo_configurations":
+	case TableFunctionMoConfigurations:
 		nodeId, err = builder.buildMoConfigurations(tbl, ctx, exprs, childId)
-	case "mo_locks":
+	case TableFunctionMoLocks:
 		nodeId, err = builder.buildMoLocks(tbl, ctx, exprs, childId)
-	case "mo_transactions":
+	case TableFunctionMoTransactions:
 		nodeId, err = builder.buildMoTransactions(tbl, ctx, exprs, childId)
-	case "mo_cache":
+	case TableFunctionMoCache:
 		nodeId, err = builder.buildMoCache(tbl, ctx, exprs, childId)
+	case TableFunctionWasmTable:
+		nodeId, err = builder.buildWasmTable(tbl, ctx, exprs, childId)
 	default:
 		err = moerr.NewNotSupported(builder.GetContext(), "table function '%s' not supported", id)
 	}
