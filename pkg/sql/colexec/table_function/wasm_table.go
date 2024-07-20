@@ -131,6 +131,14 @@ func wasmTableCall(_ int, proc *process.Process, tableFunction *TableFunction, a
 	var err error
 
 	tfState := getTfState(tableFunction)
+	// create result batch, or reuse the old one
+	if result.Batch == nil {
+		result.Batch = batch.NewWithSize(1)
+		result.Batch.Vecs[0] = proc.GetVector(types.T_varchar.ToType())
+	} else {
+		result.Batch.CleanOnlyData()
+	}
+
 	if tfState.state == initArg {
 		err = wasmTableSetArgs(proc, tableFunction, arg.Batch)
 		if err != nil {
@@ -153,14 +161,6 @@ func wasmTableCall(_ int, proc *process.Process, tableFunction *TableFunction, a
 		if len(resSlice) == 0 {
 			tfState.state = genFinish
 			return true, nil
-		}
-
-		// create result batch, or reuse the old one
-		if result.Batch == nil {
-			result.Batch = batch.NewWithSize(1)
-			result.Batch.Vecs[0] = proc.GetVector(types.T_varchar.ToType())
-		} else {
-			result.Batch.CleanOnlyData()
 		}
 
 		sz := 0

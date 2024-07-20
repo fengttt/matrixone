@@ -174,17 +174,20 @@ func resetGenerateSeriesState(proc *process.Process, tableFunction *TableFunctio
 }
 
 func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFunction, _ vm.CallResult, ret *vm.CallResult) (bool, error) {
-	var (
-		err  error
-		rbat *batch.Batch
-	)
-	defer func() {
-		if err != nil && rbat != nil {
-			rbat.Clean(proc.Mp())
-		}
-	}()
+	var err error
 
 	tfState := getGenerateSeriesArg(tableFunction)
+
+	// create result batch, or reuse the old one
+	if ret.Batch == nil {
+		ret.Batch = batch.NewWithSize(len(tableFunction.Attrs))
+		ret.Batch.Attrs = tableFunction.Attrs
+		for i := range tableFunction.Attrs {
+			ret.Batch.Vecs[i] = proc.GetVector(tableFunction.ctr.retSchema[i])
+		}
+	} else {
+		ret.Batch.CleanOnlyData()
+	}
 
 	if tfState.state == genFinish {
 		return true, nil
@@ -195,18 +198,12 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		return false, err
 	}
 
-	rbat = batch.NewWithSize(len(tableFunction.Attrs))
-	rbat.Attrs = tableFunction.Attrs
-	for i := range tableFunction.Attrs {
-		rbat.Vecs[i] = proc.GetVector(tableFunction.ctr.retSchema[i])
-	}
-
 	switch tfState.startVecType.Oid {
 	case types.T_int32:
 		start := tfState.start.(int32)
 		end := tfState.end.(int32)
 		step := tfState.step.(int32)
-		err = handleInt(start, end, step, generateInt32, proc, rbat)
+		err = handleInt(start, end, step, generateInt32, proc, ret.Batch)
 		if err != nil {
 			return false, err
 		}
@@ -214,7 +211,7 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		start := tfState.start.(int64)
 		end := tfState.end.(int64)
 		step := tfState.step.(int64)
-		err = handleInt(start, end, step, generateInt64, proc, rbat)
+		err = handleInt(start, end, step, generateInt64, proc, ret.Batch)
 		if err != nil {
 			return false, err
 		}
@@ -223,15 +220,15 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		end := tfState.end.(types.Datetime)
 		step := tfState.step.(string)
 
-		err = handleDatetime(start, end, step, -1, proc, rbat)
+		err = handleDatetime(start, end, step, -1, proc, ret.Batch)
 	case types.T_varchar:
 		start := tfState.start.(types.Datetime)
 		end := tfState.end.(types.Datetime)
 		step := tfState.step.(string)
 		scale := tfState.scale
-		rbat.Vecs[0].GetType().Scale = scale
+		ret.Batch.Vecs[0].GetType().Scale = scale
 
-		err = handleDatetime(start, end, step, scale, proc, rbat)
+		err = handleDatetime(start, end, step, scale, proc, ret.Batch)
 		if err != nil {
 			return false, err
 		}
@@ -240,7 +237,6 @@ func generateSeriesCall(_ int, proc *process.Process, tableFunction *TableFuncti
 		return false, moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", tfState.startVecType.Oid.String())
 
 	}
-	ret.Batch = rbat
 	return false, nil
 }
 
