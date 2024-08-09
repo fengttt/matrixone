@@ -18,6 +18,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/reuse"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
+	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec"
 	"github.com/matrixorigin/matrixone/pkg/vm"
@@ -32,7 +33,7 @@ const (
 )
 
 type TableFunction struct {
-	ctr *container
+	ctr container
 
 	Rets     []*plan.ColDef
 	Args     []*plan.Expr
@@ -74,52 +75,51 @@ func (tableFunction *TableFunction) Release() {
 	}
 }
 
-type container struct {
-	state          int
-	buf            *batch.Batch
-	generateSeries *generateSeriesArg
-	retSchema      []types.Type
-
-	executorsForArgs []colexec.ExpressionExecutor
+type tvfState interface {
+	reset(tf *TableFunction)
+	start(tf *TableFunction, nthRow int, proc *process.Process) error
+	call(tf *TableFunction, proc *process.Process) (vm.CallResult, error)
+	free(tf *TableFunction, proc *process.Process, pipelineFailed bool, err error)
 }
 
-type generateSeriesState int
+type container struct {
+	// schema
+	retSchema        []types.Type
+	executorsForArgs []colexec.ExpressionExecutor
 
-var (
-	initArg   generateSeriesState = 0
-	genBatch  generateSeriesState = 1
-	genFinish generateSeriesState = 2
-)
+	// hold arg vectors, we do not own them and do not free them.
+	argVecs []*vector.Vector
 
-type generateSeriesArg struct {
-	state        generateSeriesState
-	startVecType *types.Type
-	start        any
-	end          any
-	last         any
-	step         any
-	scale        int32 // used by handleDateTime
+	// next row cursor.   inputBatch holds batch from children cross
+	// calls, we do not own it and do not free it.
+	nextRow    int
+	inputBatch *batch.Batch
+
+	// opaque, each table function has its own state.
+	state tvfState
 }
 
 func (tableFunction *TableFunction) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	tableFunction.Free(proc, pipelineFailed, err)
+	tableFunction.ctr.nextRow = 0
+	tableFunction.ctr.inputBatch = nil
+	for i := range ctr.executorsForArgs {
+		if ctr.executorsForArgs[i] != nil {
+			ctr.argVecs[i] = nil
+			ctr.executorsForArgs[i].Reset
+
+
+	tableFunction.ctr.state.reset(tableFunction)
 }
 
 func (tableFunction *TableFunction) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if tableFunction.ctr != nil {
-		tableFunction.ctr.cleanExecutors()
-		if tableFunction.ctr.buf != nil {
-			tableFunction.ctr.buf.Clean(proc.Mp())
-			tableFunction.ctr.buf = nil
-		}
-		tableFunction.ctr = nil
-	}
-
+	tableFunction.ctr.cleanExecutors()
+	tableFunction.ctr.state.free(tableFunction, proc, pipelineFailed, err)
 }
 
 func (ctr *container) cleanExecutors() {
 	for i := range ctr.executorsForArgs {
 		if ctr.executorsForArgs[i] != nil {
+			ctr.argVecs[i] = nil
 			ctr.executorsForArgs[i].Free()
 		}
 	}
@@ -147,6 +147,24 @@ const (
 	unnestRecursive = false
 )
 
+type generateSeriesState int
+
+var (
+	initArg   generateSeriesState = 0
+	genBatch  generateSeriesState = 1
+	genFinish generateSeriesState = 2
+)
+
 type generateSeriesNumber interface {
 	int32 | int64 | types.Datetime
+}
+
+type generateSeriesArg struct {
+	state        generateSeriesState
+	startVecType types.Type
+	start        any
+	end          any
+	last         any
+	step         any
+	scale        int32 // used by handleDateTime
 }

@@ -29,6 +29,9 @@ import (
 const opName = "table_function"
 
 func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, error) {
+	var res vm.CallResult
+	var err error
+
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
@@ -38,80 +41,62 @@ func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, 
 	defer anal.Stop()
 
 	tblArg := tableFunction
-	var (
-		f bool
-		e error
-	)
 	idx := tableFunction.GetIdx()
 
-	result, err := vm.ChildrenCall(tableFunction.GetChildren(0), proc, anal)
+	// Calling children, get the input batch
+	input, err := vm.ChildrenCall(tableFunction.GetChildren(0), proc, anal)
 	if err != nil {
-		return result, err
+		return input, err
 	}
-	anal.Input(result.Batch, tableFunction.IsFirst)
+	anal.Input(input.Batch, tableFunction.IsFirst)
 
 	switch tblArg.FuncName {
 	case "unnest":
-		f, e = unnestCall(idx, proc, tblArg, &result)
+		res, err = unnestCall(idx, proc, tblArg, input)
 	case "generate_series":
-		f, e = generateSeriesCall(idx, proc, tblArg, &result)
+		res, err = generateSeriesCall(idx, proc, tblArg, input)
 	case "meta_scan":
-		f, e = metaScanCall(idx, proc, tblArg, &result)
+		res, err = metaScanCall(idx, proc, tblArg, input)
 	case "current_account":
-		f, e = currentAccountCall(idx, proc, tblArg, &result)
+		res, err = currentAccountCall(idx, proc, tblArg, input)
 	case "metadata_scan":
-		f, e = metadataScan(idx, proc, tblArg, &result)
+		res, err = metadataScan(idx, proc, tblArg, input)
 	case "processlist":
-		f, e = processlist(idx, proc, tblArg, &result)
+		res, err = processlist(idx, proc, tblArg, input)
 	case "mo_locks":
-		f, e = moLocksCall(idx, proc, tblArg, &result)
+		res, err = moLocksCall(idx, proc, tblArg, input)
 	case "mo_configurations":
-		f, e = moConfigurationsCall(idx, proc, tblArg, &result)
+		res, err = moConfigurationsCall(idx, proc, tblArg, input)
 	case "mo_transactions":
-		f, e = moTransactionsCall(idx, proc, tblArg, &result)
+		res, err = moTransactionsCall(idx, proc, tblArg, input)
 	case "mo_cache":
-		f, e = moCacheCall(idx, proc, tblArg, &result)
+		res, err = moCacheCall(idx, proc, tblArg, input)
 	default:
-		result.Status = vm.ExecStop
-		return result, moerr.NewNotSupported(proc.Ctx, fmt.Sprintf("table function %s is not supported", tblArg.FuncName))
-	}
-	if e != nil || f {
-		if f {
-			result.Status = vm.ExecStop
-			return result, e
-		}
-		return result, e
+		res.Status = vm.ExecStop
+		return res, moerr.NewNotSupported(proc.Ctx, fmt.Sprintf("table function %s is not supported", tblArg.FuncName))
 	}
 
-	if tableFunction.ctr.buf != nil {
-		proc.PutBatch(tableFunction.ctr.buf)
-		tableFunction.ctr.buf = nil
-	}
-	tableFunction.ctr.buf = result.Batch
-	if tableFunction.ctr.buf == nil {
-		result.Status = vm.ExecStop
-		return result, e
-	}
-	if tableFunction.ctr.buf.IsEmpty() {
-		return result, e
+	if err != nil || res.Status == vm.ExecStop {
+		res.Status = vm.ExecStop
+		res.Batch = nil
+		return res, err
 	}
 
-	if tableFunction.ctr.buf.VectorCount() != len(tblArg.ctr.retSchema) {
-		result.Status = vm.ExecStop
-		return result, moerr.NewInternalError(proc.Ctx, "table function %s return length mismatch", tblArg.FuncName)
+	// Some schema checks.   This check SHOULD have been done in compile time or in
+	// prepare.
+	if res.Batch.VectorCount() != len(tblArg.ctr.retSchema) {
+		res.Status = vm.ExecStop
+		return res, moerr.NewInternalError(proc.Ctx, "table function %s return length mismatch", tblArg.FuncName)
 	}
+
 	for i := range tblArg.ctr.retSchema {
-		if tableFunction.ctr.buf.GetVector(int32(i)).GetType().Oid != tblArg.ctr.retSchema[i].Oid {
-			result.Status = vm.ExecStop
-			return result, moerr.NewInternalError(proc.Ctx, "table function %s return type mismatch", tblArg.FuncName)
+		if res.Batch.GetVector(int32(i)).GetType().Oid != tblArg.ctr.retSchema[i].Oid {
+			res.Status = vm.ExecStop
+			return res, moerr.NewInternalError(proc.Ctx, "table function %s return type mismatch", tblArg.FuncName)
 		}
 	}
 
-	if f {
-		result.Status = vm.ExecStop
-		return result, e
-	}
-	return result, e
+	return res, nil
 }
 
 func (tableFunction *TableFunction) String(buf *bytes.Buffer) {
@@ -125,7 +110,6 @@ func (tableFunction *TableFunction) OpType() vm.OpType {
 
 func (tableFunction *TableFunction) Prepare(proc *process.Process) error {
 	tblArg := tableFunction
-	tblArg.ctr = new(container)
 
 	retSchema := make([]types.Type, len(tblArg.Rets))
 	for i := range tblArg.Rets {
