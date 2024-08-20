@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go/constant"
 	"net"
 	"reflect"
 	"strings"
@@ -6645,8 +6644,8 @@ func TestSetGlobalSysVar(t *testing.T) {
 
 		// new session, both GetSession/GlobalSysVar equal 0
 		ses2 := newSes(nil, ctrl)
-		ses2.sesSysVars.sysVars["autocommit"] = 0
-		ses2.gSysVars.sysVars["autocommit"] = 0
+		ses2.sesSysVars.mp["autocommit"] = 0
+		ses2.gSysVars.mp["autocommit"] = 0
 		value, err = ses2.GetSessionSysVar("autocommit")
 		convey.So(err, convey.ShouldBeNil)
 		convey.So(value, convey.ShouldEqual, 0)
@@ -6660,14 +6659,14 @@ func TestSetGlobalSysVar(t *testing.T) {
 }
 
 func boxExprStr(s string) tree.Expr {
-	return tree.NewNumValWithType(constant.MakeString(s), s, false, tree.P_char)
+	return tree.NewNumVal(s, s, false, tree.P_char)
 }
 
 func mustUnboxExprStr(e tree.Expr) string {
 	if e == nil {
 		return ""
 	}
-	return e.(*tree.NumVal).OrigString()
+	return e.(*tree.NumVal).String()
 }
 
 func Test_doAlterUser(t *testing.T) {

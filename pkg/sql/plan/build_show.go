@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go/constant"
 	"strings"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
@@ -28,7 +27,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/defines"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
-	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers"
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/dialect"
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
@@ -41,13 +39,28 @@ const INFORMATION_SCHEMA = "information_schema"
 
 func buildShowCreateDatabase(stmt *tree.ShowCreateDatabase,
 	ctx CompilerContext) (*Plan, error) {
-	// snapshot to fix
-	name, err := databaseIsValid(getSuitableDBName("", stmt.Name), ctx, Snapshot{TS: &timestamp.Timestamp{}})
+
+	var err error
+	var snapshot *Snapshot
+	var snapshotSpec string
+	if stmt.AtTsExpr != nil {
+		if snapshot, err = getTimeStampByTsHint(ctx, stmt.AtTsExpr); err != nil {
+			return nil, err
+		}
+
+		if stmt.AtTsExpr.Type == tree.ATTIMESTAMPSNAPSHOT {
+			snapshotSpec = fmt.Sprintf("{snapshot = '%s'}", stmt.AtTsExpr.SnapshotName)
+		} else {
+			snapshotSpec = fmt.Sprintf("{MO_TS = %d}", snapshot.TS.PhysicalTime)
+		}
+	}
+
+	name, err := databaseIsValid(getSuitableDBName("", stmt.Name), ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
 
-	if sub, err := ctx.GetSubscriptionMeta(name, Snapshot{TS: &timestamp.Timestamp{}}); err != nil {
+	if sub, err := ctx.GetSubscriptionMeta(name, snapshot); err != nil {
 		return nil, err
 	} else if sub != nil {
 		accountId, err := ctx.GetAccountId()
@@ -56,7 +69,7 @@ func buildShowCreateDatabase(stmt *tree.ShowCreateDatabase,
 		}
 		// get data from schema
 		//sql := fmt.Sprintf("SELECT md.datname as `Database` FROM %s.mo_database md WHERE md.datname = '%s'", MO_CATALOG_DB_NAME, stmt.Name)
-		sql := fmt.Sprintf("SELECT md.datname as `Database`,dat_createsql as `Create Database` FROM %s.mo_database md WHERE md.datname = '%s' and account_id=%d", MO_CATALOG_DB_NAME, stmt.Name, accountId)
+		sql := fmt.Sprintf("SELECT md.datname as `Database`,dat_createsql as `Create Database` FROM %s.mo_database %s md WHERE md.datname = '%s' and account_id=%d", MO_CATALOG_DB_NAME, snapshotSpec, stmt.Name, accountId)
 		return returnByRewriteSQL(ctx, sql, plan.DataDefinition_SHOW_CREATEDATABASE)
 	}
 
@@ -72,21 +85,20 @@ func buildShowCreateTable(stmt *tree.ShowCreateTable, ctx CompilerContext) (*Pla
 	tblName := stmt.Name.GetTableName()
 	dbName := stmt.Name.GetDBName()
 
-	snapshot := &Snapshot{TS: &timestamp.Timestamp{}}
-
+	var snapshot *Snapshot
 	if stmt.AtTsExpr != nil {
 		if snapshot, err = getTimeStampByTsHint(ctx, stmt.AtTsExpr); err != nil {
 			return nil, err
 		}
 	}
 
-	dbName, err = databaseIsValid(getSuitableDBName(dbName, ""), ctx, *snapshot)
+	dbName, err = databaseIsValid(getSuitableDBName(dbName, ""), ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
 
 	// check if the database is a subscription
-	if sub, err := ctx.GetSubscriptionMeta(dbName, *snapshot); err != nil {
+	if sub, err := ctx.GetSubscriptionMeta(dbName, snapshot); err != nil {
 		return nil, err
 	} else if sub != nil {
 		if !pubsub.InSubMetaTables(sub, tblName) {
@@ -99,7 +111,7 @@ func buildShowCreateTable(stmt *tree.ShowCreateTable, ctx CompilerContext) (*Pla
 		}()
 	}
 
-	_, tableDef := ctx.Resolve(dbName, tblName, *snapshot)
+	_, tableDef := ctx.Resolve(dbName, tblName, snapshot)
 	if tableDef == nil {
 		return nil, moerr.NewNoSuchTable(ctx.GetContext(), dbName, tblName)
 	}
@@ -117,7 +129,7 @@ func buildShowCreateTable(stmt *tree.ShowCreateTable, ctx CompilerContext) (*Pla
 		return buildShowCreateView(newStmt, ctx)
 	}
 
-	ddlStr, _, err := ConstructCreateTableSQL(ctx, tableDef, *snapshot, false)
+	ddlStr, _, err := ConstructCreateTableSQL(ctx, tableDef, snapshot, false)
 	if err != nil {
 		return nil, err
 	}
@@ -144,19 +156,19 @@ func buildShowCreateView(stmt *tree.ShowCreateView, ctx CompilerContext) (*Plan,
 	tblName := stmt.Name.GetTableName()
 	dbName := stmt.Name.GetDBName()
 
-	snapshot := &Snapshot{TS: &timestamp.Timestamp{}}
+	var snapshot *Snapshot
 	if stmt.AtTsExpr != nil {
 		if snapshot, err = getTimeStampByTsHint(ctx, stmt.AtTsExpr); err != nil {
 			return nil, err
 		}
 	}
 
-	dbName, err = databaseIsValid(getSuitableDBName(dbName, ""), ctx, *snapshot)
+	dbName, err = databaseIsValid(getSuitableDBName(dbName, ""), ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
 
-	_, tableDef := ctx.Resolve(dbName, tblName, *snapshot)
+	_, tableDef := ctx.Resolve(dbName, tblName, snapshot)
 	if tableDef == nil || tableDef.TableType != catalog.SystemViewRel {
 		return nil, moerr.NewInvalidInput(ctx.GetContext(), "show view '%s' is not a valid view", tblName)
 	}
@@ -195,7 +207,7 @@ func buildShowDatabases(stmt *tree.ShowDatabases, ctx CompilerContext) (*Plan, e
 	var sql string
 	snapshotSpec := ""
 
-	snapshot := &Snapshot{TS: &timestamp.Timestamp{}}
+	var snapshot *Snapshot
 	if stmt.AtTsExpr != nil {
 		if snapshot, err = getTimeStampByTsHint(ctx, stmt.AtTsExpr); err != nil {
 			return nil, err
@@ -230,7 +242,7 @@ func buildShowDatabases(stmt *tree.ShowDatabases, ctx CompilerContext) (*Plan, e
 
 func buildShowSequences(stmt *tree.ShowSequences, ctx CompilerContext) (*Plan, error) {
 	// snapshot to fix
-	dbName, err := databaseIsValid(stmt.DBName, ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(stmt.DBName, ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +273,7 @@ func buildShowTables(stmt *tree.ShowTables, ctx CompilerContext) (*Plan, error) 
 		return nil, err
 	}
 
-	snapshot := &Snapshot{TS: &timestamp.Timestamp{}}
+	var snapshot *Snapshot
 	snapshotSpec := ""
 	if stmt.AtTsExpr != nil {
 		if snapshot, err = getTimeStampByTsHint(ctx, stmt.AtTsExpr); err != nil {
@@ -277,7 +289,7 @@ func buildShowTables(stmt *tree.ShowTables, ctx CompilerContext) (*Plan, error) 
 
 	}
 
-	dbName, err := databaseIsValid(stmt.DBName, ctx, *snapshot)
+	dbName, err := databaseIsValid(stmt.DBName, ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +300,7 @@ func buildShowTables(stmt *tree.ShowTables, ctx CompilerContext) (*Plan, error) 
 	}
 
 	subName := dbName
-	sub, err := ctx.GetSubscriptionMeta(dbName, *snapshot)
+	sub, err := ctx.GetSubscriptionMeta(dbName, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -345,14 +357,14 @@ func buildShowTableNumber(stmt *tree.ShowTableNumber, ctx CompilerContext) (*Pla
 	}
 
 	// snapshot to fix
-	snapshot := &Snapshot{TS: &timestamp.Timestamp{}}
-	dbName, err := databaseIsValid(stmt.DbName, ctx, *snapshot)
+	var snapshot *Snapshot
+	dbName, err := databaseIsValid(stmt.DbName, ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
 
 	subName := dbName
-	sub, err := ctx.GetSubscriptionMeta(dbName, *snapshot)
+	sub, err := ctx.GetSubscriptionMeta(dbName, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -389,13 +401,13 @@ func buildShowColumnNumber(stmt *tree.ShowColumnNumber, ctx CompilerContext) (*P
 		return nil, err
 	}
 	// snapshot to fix
-	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DbName), ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DbName), ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	tblName := string(stmt.Table.ToTableName().ObjectName)
-	obj, tableDef := ctx.Resolve(dbName, tblName, Snapshot{TS: &timestamp.Timestamp{}})
+	obj, tableDef := ctx.Resolve(dbName, tblName, nil)
 	if tableDef == nil {
 		return nil, moerr.NewNoSuchTable(ctx.GetContext(), dbName, tblName)
 	}
@@ -434,13 +446,13 @@ func buildShowColumnNumber(stmt *tree.ShowColumnNumber, ctx CompilerContext) (*P
 }
 
 func buildShowTableValues(stmt *tree.ShowTableValues, ctx CompilerContext) (*Plan, error) {
-	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DbName), ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DbName), ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	tblName := string(stmt.Table.ToTableName().ObjectName)
-	obj, tableDef := ctx.Resolve(dbName, tblName, Snapshot{TS: &timestamp.Timestamp{}})
+	obj, tableDef := ctx.Resolve(dbName, tblName, nil)
 	if tableDef == nil {
 		return nil, moerr.NewNoSuchTable(ctx.GetContext(), dbName, tblName)
 	}
@@ -494,13 +506,13 @@ func buildShowColumns(stmt *tree.ShowColumns, ctx CompilerContext) (*Plan, error
 		return nil, err
 	}
 
-	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DBName), ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(getSuitableDBName(stmt.Table.GetDBName(), stmt.DBName), ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	tblName := string(stmt.Table.ToTableName().ObjectName)
-	obj, tableDef := ctx.Resolve(dbName, tblName, Snapshot{TS: &timestamp.Timestamp{}})
+	obj, tableDef := ctx.Resolve(dbName, tblName, nil)
 	if tableDef == nil {
 		return nil, moerr.NewNoSuchTable(ctx.GetContext(), dbName, tblName)
 	}
@@ -624,7 +636,7 @@ func buildShowTableStatus(stmt *tree.ShowTableStatus, ctx CompilerContext) (*Pla
 		return nil, moerr.NewSyntaxError(ctx.GetContext(), "like clause and where clause cannot exist at the same time")
 	}
 
-	dbName, err := databaseIsValid(stmt.DbName, ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(stmt.DbName, ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +649,7 @@ func buildShowTableStatus(stmt *tree.ShowTableStatus, ctx CompilerContext) (*Pla
 		return nil, err
 	}
 
-	sub, err := ctx.GetSubscriptionMeta(dbName, Snapshot{TS: &timestamp.Timestamp{}})
+	sub, err := ctx.GetSubscriptionMeta(dbName, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -764,7 +776,7 @@ func buildShowTriggers(stmt *tree.ShowTarget, ctx CompilerContext) (*Plan, error
 		return nil, moerr.NewSyntaxError(ctx.GetContext(), "like clause and where clause cannot exist at the same time")
 	}
 
-	dbName, err := databaseIsValid(stmt.DbName, ctx, Snapshot{TS: &timestamp.Timestamp{}})
+	dbName, err := databaseIsValid(stmt.DbName, ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +800,7 @@ func buildShowTriggers(stmt *tree.ShowTarget, ctx CompilerContext) (*Plan, error
 }
 
 func buildShowIndex(stmt *tree.ShowIndex, ctx CompilerContext) (*Plan, error) {
-	snapshot := Snapshot{TS: &timestamp.Timestamp{}}
+	var snapshot *Snapshot
 	dbName, err := databaseIsValid(getSuitableDBName(stmt.TableName.GetDBName(), stmt.DbName), ctx, snapshot)
 	if err != nil {
 		return nil, err
@@ -1031,10 +1043,10 @@ func buildShowPublication(stmt *tree.ShowPublications, ctx CompilerContext) (*Pl
 	like := stmt.Like
 	if like != nil {
 		right, ok := like.Right.(*tree.NumVal)
-		if !ok || right.Value.Kind() != constant.String {
+		if !ok || right.Kind() != tree.Str {
 			return nil, moerr.NewInternalError(ctx.GetContext(), "like clause must be a string")
 		}
-		sql += fmt.Sprintf(" where pub_name like '%s' order by pub_name;", constant.StringVal(right.Value))
+		sql += fmt.Sprintf(" where pub_name like '%s' order by pub_name;", right.String())
 	} else {
 		sql += " order by update_time desc, created_time desc;"
 	}

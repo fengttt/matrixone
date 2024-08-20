@@ -33,7 +33,9 @@ type container struct {
 type Merge struct {
 	ctr      *container
 	SinkScan bool
-
+	Partial  bool  // false means listening on all merge receivers
+	StartIDX int32 // if partial, listening on receivers[start:end]
+	EndIDX   int32
 	vm.OperatorBase
 }
 
@@ -67,6 +69,13 @@ func (merge *Merge) WithSinkScan(sinkScan bool) *Merge {
 	return merge
 }
 
+func (merge *Merge) WithPartial(start, end int32) *Merge {
+	merge.Partial = true
+	merge.StartIDX = start
+	merge.EndIDX = end
+	return merge
+}
+
 func (merge *Merge) Release() {
 	if merge != nil {
 		reuse.Free[Merge](merge, nil)
@@ -74,10 +83,6 @@ func (merge *Merge) Release() {
 }
 
 func (merge *Merge) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	merge.Free(proc, pipelineFailed, err)
-}
-
-func (merge *Merge) Free(proc *process.Process, pipelineFailed bool, err error) {
 	if merge.ctr != nil {
 		merge.ctr.FreeMergeTypeOperator(pipelineFailed)
 		if merge.ctr.buf != nil {
@@ -86,5 +91,8 @@ func (merge *Merge) Free(proc *process.Process, pipelineFailed bool, err error) 
 		}
 		merge.ctr = nil
 	}
+}
+
+func (merge *Merge) Free(proc *process.Process, pipelineFailed bool, err error) {
 
 }
