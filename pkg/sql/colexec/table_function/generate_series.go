@@ -23,6 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec"
+	plan2 "github.com/matrixorigin/matrixone/pkg/sql/plan"
 	"github.com/matrixorigin/matrixone/pkg/vm"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
@@ -179,6 +180,7 @@ func (g *generateSeriesArg) start(tf *TableFunction, proc *process.Process, nthR
 			return err
 		}
 	case types.T_varchar:
+
 		// call step first, then we know startVec and endVec are not nil
 		if err = initDateTimeStep(&g.dtState, proc, stepVec, nthRow); err != nil {
 			return err
@@ -187,6 +189,12 @@ func (g *generateSeriesArg) start(tf *TableFunction, proc *process.Process, nthR
 		if err = initStartAndEndVarChar(&g.dtState, startVec, endVec, nthRow); err != nil {
 			return err
 		}
+
+		// reset schema
+		typ := types.T_datetime.ToType()
+		typ.Scale = g.dtState.scale
+		tf.Rets[0].Typ = plan2.MakePlan2Type(&typ)
+		tf.ctr.retSchema[0] = typ
 	default:
 		return moerr.NewNotSupported(proc.Ctx, "generate_series not support type %s", resTyp.Oid.String())
 	}
@@ -238,6 +246,10 @@ func (g *generateSeriesArg) call(tf *TableFunction, proc *process.Process) (vm.C
 	case types.T_int64:
 		buildNextNumBatch[int64](&g.i64State, g.batch, 8192, proc)
 	case types.T_datetime:
+		if err := buildNextDatetimeBatch(&g.dtState, g.batch, 8192, proc); err != nil {
+			return vm.CancelResult, err
+		}
+	case types.T_varchar:
 		if err := buildNextDatetimeBatch(&g.dtState, g.batch, 8192, proc); err != nil {
 			return vm.CancelResult, err
 		}

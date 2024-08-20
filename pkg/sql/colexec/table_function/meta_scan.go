@@ -72,7 +72,7 @@ func (s *metaScanState) start(tf *TableFunction, proc *process.Process, nthRow i
 	}()
 
 	// Note that later s.batch.Vecs will be dupped from sbat.   So we must clean.
-	s.batch.Clean(proc.Mp())
+	s.batch.CleanOnlyData()
 	for i, vec := range bats[0].Vecs {
 		s.batch.Vecs[i], err = vec.Dup(proc.Mp())
 		if err != nil {
