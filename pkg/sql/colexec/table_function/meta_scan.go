@@ -18,6 +18,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
+	"github.com/matrixorigin/matrixone/pkg/sql/colexec"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
@@ -29,7 +30,11 @@ type metaScanState struct {
 }
 
 func metaScanPrepare(proc *process.Process, tableFunction *TableFunction) (tvfState, error) {
-	return &metaScanState{}, nil
+	arg := &metaScanState{}
+	var err error
+	tableFunction.ctr.executorsForArgs, err = colexec.NewExpressionExecutorsFromPlanExpressions(proc, tableFunction.Args)
+	tableFunction.ctr.argVecs = make([]*vector.Vector, len(tableFunction.Args))
+	return arg, err
 }
 
 func (s *metaScanState) start(tf *TableFunction, proc *process.Process, nthRow int) error {

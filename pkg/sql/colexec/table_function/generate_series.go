@@ -22,6 +22,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
+	"github.com/matrixorigin/matrixone/pkg/sql/colexec"
 	"github.com/matrixorigin/matrixone/pkg/vm"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
@@ -125,7 +126,10 @@ func initStartAndEndVarChar(gs *genDatetimeState,
 
 func generateSeriesPrepare(proc *process.Process, tableFunction *TableFunction) (tvfState, error) {
 	st := new(generateSeriesArg)
-	return st, nil
+	var err error
+	tableFunction.ctr.executorsForArgs, err = colexec.NewExpressionExecutorsFromPlanExpressions(proc, tableFunction.Args)
+	tableFunction.ctr.argVecs = make([]*vector.Vector, len(tableFunction.Args))
+	return st, err
 }
 
 func (g *generateSeriesArg) reset(tf *TableFunction, proc *process.Process) {
