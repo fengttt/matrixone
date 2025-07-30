@@ -83,6 +83,10 @@ type ExParam struct {
 	parqh     *ParquetHandler
 }
 
+func (ep *ExParam) GetReader() io.ReadCloser {
+	return ep.reader
+}
+
 type ExFileparam struct {
 	End       bool
 	FileCnt   int
