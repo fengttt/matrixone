@@ -577,11 +577,6 @@ func (ctr *container) makeAggList(aggExprs []aggexec.AggFuncExecExpression) ([]a
 				return nil, err
 			}
 		}
-		if ctr.mtyp == H0 {
-			if err := aggList[i].GroupGrow(1); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	if ctr.mtyp != H0 {
