@@ -166,9 +166,10 @@ func NewQueryBuilder(queryType plan.Query_StatementType, ctx CompilerContext, is
 		optimizationHistory:      make([]string, 0),
 		// -1 means "no old-row delete maintenance" (set only on ODKU into an
 		// irregular-index table); step 0 is a valid index so it cannot be the zero value.
-		irregularMaintDeleteStep: -1,
-		returningSourceStep:      -1,
-		returningFilterPos:       -1,
+		irregularMaintDeleteStep:           -1,
+		irregularMaintInsertOnlySourceStep: -1,
+		returningSourceStep:                -1,
+		returningFilterPos:                 -1,
 	}
 }
 
@@ -3780,6 +3781,9 @@ func (builder *QueryBuilder) createQuery() (*Query, error) {
 			return nil, err
 		}
 		builder.qry.Steps[i] = builder.removeUnnecessaryProjections(rootID)
+		if !builder.subqueryPredicatePlanningDisabled() {
+			builder.generateScalarPredicateRuntimeFilters(builder.qry.Steps[i])
+		}
 	}
 
 	// Expose the SINK column remap so irregular-index maintenance sub-plans built
@@ -5639,6 +5643,26 @@ func (builder *QueryBuilder) bindSelect(stmt *tree.Select, ctx *BindContext, isR
 	if len(ctx.groups) == 0 && len(ctx.aggregates) > 0 {
 		ctx.hasSingleRow = true
 	}
+
+	// All aggregate consumers in this query block are bound now. Compact exact
+	// affine SUM families before aggregate arguments are flattened and the AGG
+	// node fixes their physical slot layout.
+	affineOrderBys := slices.Clone(boundOrderBys)
+	if boundTimeWindowOrderBy != nil {
+		affineOrderBys = append(affineOrderBys, boundTimeWindowOrderBy)
+	}
+	builder.rewriteAffineSumFamilies(
+		ctx,
+		[][]*plan.Expr{
+			ctx.projects,
+			ctx.windows,
+			ctx.times,
+			boundHavingList,
+			fillVals,
+			fillCols,
+		},
+		affineOrderBys,
+	)
 
 	// Flatten aggregate argument subqueries before building the AGG node.
 	if !ctx.sampleFunc.hasSampleFunc && !ctx.bindingRecurStmt() {
