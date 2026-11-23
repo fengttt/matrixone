@@ -55,7 +55,6 @@ func TestLoopJoinScalarBuild(t *testing.T) {
 				require.Nil(t, join.ctr.joinBat, "unconditional scalar build needs no condition headers")
 			}
 			require.Nil(t, join.ctr.inBat)
-			require.Nil(t, join.ctr.probeCopy)
 			join.Reset(proc, false, nil)
 			require.Zero(t, account.Snapshot().Used)
 		})
@@ -119,7 +118,6 @@ func TestLoopJoinScalarBuildDoesNotPublishOnFailure(t *testing.T) {
 			require.Nil(t, result.Batch)
 			require.Zero(t, join.ctr.probeIdx)
 			require.Zero(t, join.ctr.resBat.RowCount())
-			require.Nil(t, join.ctr.probeCopy)
 		})
 	}
 }

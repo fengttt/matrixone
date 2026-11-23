@@ -914,3 +914,38 @@ func TestConstNullCleanAndUnionBatch(t *testing.T) {
 		})
 	}
 }
+
+// UnionMulti and UnionBatch accept the destination as their own source, and
+// an admission failure leaves the destination empty and the account untouched.
+func TestUnionSelfSourceAndAdmission(t *testing.T) {
+	for _, rangeCopy := range []bool{false, true} {
+		t.Run(map[bool]string{false: "repeat", true: "range"}[rangeCopy], func(t *testing.T) {
+			mp := mpool.MustNewZero()
+			t.Cleanup(func() { require.Zero(t, mp.CurrNB()) })
+			source := NewVec(types.T_int64.ToType(), mp)
+			t.Cleanup(func() { source.Free(mp) })
+			require.NoError(t, AppendFixedList(source, []int64{11, 22, 33}, nil, mp))
+			if rangeCopy {
+				require.NoError(t, source.UnionBatch(source, 1, 2, nil, mp))
+				require.Equal(t, []int64{11, 22, 33, 22, 33}, MustFixedColNoTypeCheck[int64](source))
+			} else {
+				require.NoError(t, source.UnionMulti(source, 1, 2, mp))
+				require.Equal(t, []int64{11, 22, 33, 22, 22}, MustFixedColNoTypeCheck[int64](source))
+			}
+			state := newTestVectorAllocationAccount(t, 1, 128)
+			t.Cleanup(func() { finalizeTestVectorAllocationAccount(t, state) })
+			dmp := state.view(t, mp)
+			out := newAccountedTestVector(t, types.T_int64.ToType(), dmp)
+			t.Cleanup(func() { out.Free(dmp) })
+			var err error
+			if rangeCopy {
+				err = out.UnionBatch(source, 0, 3, nil, dmp)
+			} else {
+				err = out.UnionMulti(source, 0, 3, dmp)
+			}
+			require.ErrorIs(t, err, mpool.ErrAllocationAccountCapacity)
+			require.Zero(t, out.Length())
+			require.Zero(t, state.account.Snapshot().Used)
+		})
+	}
+}

@@ -90,9 +90,6 @@ func TestLoopJoinConstantProjection(t *testing.T) {
 				}
 				require.Equal(t, 5*buildRows, seen)
 				require.Greater(t, batches, 1)
-				require.Nil(t, join.ctr.probeCopy)
-				require.Nil(t, join.ctr.buildCopy)
-				require.Nil(t, join.ctr.buildCopyBatch)
 				return
 			}
 			require.NoError(t, join.resetResultBat(proc))
@@ -145,13 +142,8 @@ func TestLoopJoinCopyBindingNewGeneration(t *testing.T) {
 		}
 	}
 	join.Reset(proc, false, nil)
-	require.Nil(t, join.ctr.probeCopy)
-	require.Nil(t, join.ctr.buildCopy)
-	require.Nil(t, join.ctr.buildCopyBatch)
 	require.Zero(t, account.Snapshot().Used)
 	join.ctr.setProbeBatch(input)
 	join.Free(proc, false, nil)
 	freeTestChildren(join)
-	require.Nil(t, join.ctr.probeCopy)
-	require.Nil(t, join.ctr.buildCopyBatch)
 }

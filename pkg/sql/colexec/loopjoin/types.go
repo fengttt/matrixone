@@ -114,14 +114,8 @@ type container struct {
 	// not fit a non-empty result batch, keep it here rather than losing it.
 	rightPendingRow bool
 	rightPending    uint64
-	// Copiers hold stateless functions, not input/lease ownership. The probe
-	// binding refreshes on every input assignment; build batches are immutable
-	// for the join-map lifetime and are rebound when that batch changes.
-	probeCopy      vector.UnionMultiFunc
-	buildCopy      vector.UnionBatchFunc
-	buildCopyBatch *batch.Batch
-	inBat          *batch.Batch
-	resBat         *batch.Batch
+	inBat           *batch.Batch
+	resBat          *batch.Batch
 	// resBatMP is the pool resBat was created with (the result view).
 	resBatMP *mpool.MPool
 	joinBat  *batch.Batch
@@ -257,7 +251,6 @@ func (loopJoin *LoopJoin) Reset(proc *process.Process, pipelineFailed bool, err 
 	ctr.cleanBatch(proc.Mp())
 	ctr.state = Build
 	ctr.inBat = nil
-	ctr.clearBulkCopy()
 	ctr.probeIdx = 0
 	ctr.batIdx = 0
 	ctr.batRowIdx = 0
@@ -290,17 +283,6 @@ func (ctr *container) cleanRightMatchState(proc *process.Process) {
 
 func (ctr *container) setProbeBatch(input *batch.Batch) {
 	ctr.inBat = input
-	ctr.probeCopy = vector.GetUnionMultiFunction(input.Vecs)
-	ctr.clearBulkCopyBuild()
-}
-
-func (ctr *container) clearBulkCopyBuild() {
-	ctr.buildCopy, ctr.buildCopyBatch = nil, nil
-}
-
-func (ctr *container) clearBulkCopy() {
-	ctr.probeCopy = nil
-	ctr.clearBulkCopyBuild()
 }
 
 func (ctr *container) clearConditionResult() {
@@ -333,7 +315,6 @@ func (ctr *container) clearProbeResume() {
 
 func (ctr *container) cleanBatch(mp *mpool.MPool) {
 	ctr.clearProbeResume()
-	ctr.clearBulkCopy()
 	if ctr.resBat != nil {
 		ctr.resBat.Clean(ctr.resBatMP)
 		ctr.resBat = nil

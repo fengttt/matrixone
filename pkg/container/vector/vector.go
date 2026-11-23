@@ -4067,10 +4067,6 @@ func (v *Vector) UnionOne(w *Vector, sel int64, mp *mpool.MPool) error {
 
 // It is simply append. the purpose of retention is ease of use
 func (v *Vector) UnionMulti(w *Vector, sel int64, cnt int, mp *mpool.MPool) error {
-	return v.unionMultiFlat(w, sel, cnt, mp)
-}
-
-func (v *Vector) unionMultiFlat(w *Vector, sel int64, cnt int, mp *mpool.MPool) error {
 	if cnt == 0 {
 		return nil
 	}

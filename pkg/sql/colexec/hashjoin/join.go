@@ -799,12 +799,6 @@ func (ctr *container) probe(hashJoin *HashJoin, proc *process.Process, result *v
 	batchUnique := ctr.probeHashOnPK && hashJoin.NonEqCond == nil &&
 		((hashJoin.IsInner() && !ctr.probeTrackBuildMatches) || hashJoin.JoinType == plan.Node_RIGHT)
 	batchMembership := hashJoin.usesMembershipProjection()
-	var probeCopy vector.UnionMultiFunc = (*vector.Vector).UnionMulti
-	if hashJoin.NonEqCond == nil && !ctr.probeHashOnPK && !batchMembership && ctr.probeRightSemiAnti {
-		// This invocation retains one probe input through every continuation.
-		// Refresh the stateless choice on the next call, including reused headers.
-		probeCopy = vector.GetUnionMultiFunction(ctr.leftBat.Vecs)
-	}
 
 	for !full && resRowCnt < outputLimit {
 		switch ctr.probeState {
@@ -1030,7 +1024,7 @@ func (ctr *container) probe(hashJoin *HashJoin, proc *process.Process, result *v
 				if ctr.probeRightSemiAnti {
 					for j, rp := range hashJoin.ResultCols {
 						if rp.Rel == 0 {
-							err = probeCopy(ctr.resBat.Vecs[j], ctr.leftBat.Vecs[rp.Pos], row, processCount, resMP)
+							err = ctr.resBat.Vecs[j].UnionMulti(ctr.leftBat.Vecs[rp.Pos], row, processCount, resMP)
 							if err != nil {
 								return err
 							}

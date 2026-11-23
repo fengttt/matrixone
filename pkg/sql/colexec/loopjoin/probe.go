@@ -105,19 +105,15 @@ func (ctr *container) appendJoinedRange(
 	if err != nil {
 		return err
 	}
-	if ctr.buildCopyBatch != buildBat || ctr.buildCopy == nil {
-		ctr.buildCopy = vector.GetUnionBatchFunction(buildBat.Vecs)
-		ctr.buildCopyBatch = buildBat
-	}
 	for k, rp := range ap.ResultCols {
 		switch rp.Rel {
 		case 0:
-			if err := ctr.probeCopy(ctr.resBat.Vecs[k],
+			if err := ctr.resBat.Vecs[k].UnionMulti(
 				inBat.Vecs[rp.Pos], int64(probeRow), count, resMP); err != nil {
 				return err
 			}
 		case 1:
-			if err := ctr.buildCopy(ctr.resBat.Vecs[k],
+			if err := ctr.resBat.Vecs[k].UnionBatch(
 				buildBat.Vecs[rp.Pos], int64(start), count, nil, resMP); err != nil {
 				return err
 			}
@@ -425,16 +421,14 @@ func (ctr *container) probeScalarBuild(
 		used += rowBytes
 		count++
 	}
-	probeCopy := vector.GetUnionBatchFunction(inbat.Vecs)
-	buildCopy := vector.GetUnionMultiFunction(build.Vecs)
 	for k, rp := range ap.ResultCols {
 		if rp.Rel == 0 {
-			if err := probeCopy(ctr.resBat.Vecs[k],
+			if err := ctr.resBat.Vecs[k].UnionBatch(
 				inbat.Vecs[rp.Pos], int64(start), count, nil, resMP); err != nil {
 				return err
 			}
 		} else if rp.Rel == 1 {
-			if err := buildCopy(ctr.resBat.Vecs[k],
+			if err := ctr.resBat.Vecs[k].UnionMulti(
 				build.Vecs[rp.Pos], 0, count, resMP); err != nil {
 				return err
 			}
@@ -444,7 +438,6 @@ func (ctr *container) probeScalarBuild(
 	ctr.probeIdx = start + count
 	if ctr.probeIdx == inbat.RowCount() {
 		ctr.inBat = nil
-		ctr.clearBulkCopy()
 		ctr.probeIdx = 0
 	}
 	ctr.resBat.SetRowCount(count)
@@ -460,7 +453,6 @@ func (ctr *container) probe(
 	defer func() {
 		if err != nil {
 			ctr.clearProbeResume()
-			ctr.clearBulkCopy()
 		}
 	}()
 
@@ -686,7 +678,6 @@ func (ctr *container) probe(
 	}
 
 	ctr.inBat = nil
-	ctr.clearBulkCopy()
 	ctr.probeIdx = 0
 	ctr.resBat.SetRowCount(rowCountIncrease)
 	result.Batch = ctr.resBat
